@@ -7,7 +7,7 @@ We use =.env= files to keep track of machine-specific variables. Create a
 #+BEGIN_EXAMPLE sh
 PROJECT_DIR=/path/to/root/of/project/
 DATA_DIR=/path/to/root/of/project/data/
-SRC_DIR=/path/to/src/dir/ # where to install any packages from src
+SRC_DIR=/path/to/src/dir/ # where to install any packages from source
 #+END_EXAMPLE
 To access these variables in python code run:
 #+BEGIN_SRC python
@@ -24,15 +24,20 @@ source ~/.virtualenvs/pcam/bin/activate
 #+END_SRC
 ** pytorch
 Install pytorch using the following command (but look at https://pytorch.org/
-if you're not using linux).
+if you're not using Linux).
 #+begin_SRC sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 #+END_SRC
 ** wandb
-To setup wandb, run:
+Set up an [[https://docs.wandb.ai/quickstart#1.-set-up-wandb][wandb]] account on. To setup wandb, run:
 #+BEGIN_SRC sh
 pip install wandb
 wandb login
+#+END_SRC
+** custom code
+Run the following to install the contents under =src/= as a package:
+#+BEGIN_SRC sh
+pip install -e .
 #+END_SRC
 ** other requirements
 After having run this, install the rest of the requirements using:
