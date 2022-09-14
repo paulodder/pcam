@@ -1,4 +1,20 @@
-#+BIND: org-export-use-babel nil
 #+TITLE: README
+#+PROPERTY: header-args :session README
 * setup
-tba
+* .env
+
+* virtualenv
+#+BEGIN_SRC sh
+virtualenv ~/.virtualenvs/pcam --python=python3.8
+source ~/.virtualenvs/pcam/bin/activate
+#+END_SRC
+** pytorch
+Install pytorch using the following command (but look at https://pytorch.org/
+if you're not using linux).
+#+begin_SRC sh
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+#+END_SRC
+
+
+* data
+
