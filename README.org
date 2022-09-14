@@ -42,7 +42,9 @@ pip install -r requirements.txt
 * data
 Download [[https://drive.google.com/drive/folders/1gHou49cA1s5vua2V5L98Lt8TiWA3FrKB][this drive folder]] as a =.zip=. Move out of the folder, right click on
 this folder, and select =Download=. This will download both a =.zip= and a
-=.gz= named like =pcamv1-<timestamp>-001.zip= and =*gz=
+=.gz= named like =pcamv1-<timestamp>-001.zip= and =*gz=. The =.gz= file is
+likely to fail as it is too big. You can use [[https://drive.google.com/file/d/1Ka0XfEMiwgCYPdTI-vv6eUElOBnKFKQ2/view][this link]] to download it
+separately.
 
 Find the exact names of the files and run the following:
 #+BEGIN_SRC sh
