@@ -28,6 +28,13 @@ if you're not using linux).
 #+begin_SRC sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 #+END_SRC
+** wandb
+To setup wandb, run:
+#+BEGIN_SRC sh
+pip install wandb
+wandb login
+#+END_SRC
+
 ** other requirements
 After having run this, install the rest of the requirements using:
 #+BEGIN_SRC sh
