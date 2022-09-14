@@ -2,6 +2,14 @@
 #+PROPERTY: header-args :session README
 * setup
 * .env
+We use =.env= files to keep track of machine-specific variables. Create a
+=.env= in the root of this project with the following values set:
+#+BEGIN_EXAMPLE sh
+PROJECT_DIR=/path/to/root/of/project/
+DATA_DIR=/path/to/root/of/project/data/
+SRC_DIR=/home/paul/src/
+#+END_EXAMPLE
+
 
 * virtualenv
 #+BEGIN_SRC sh
