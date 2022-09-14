@@ -7,7 +7,7 @@ We use =.env= files to keep track of machine-specific variables. Create a
 #+BEGIN_EXAMPLE sh
 PROJECT_DIR=/path/to/root/of/project/
 DATA_DIR=/path/to/root/of/project/data/
-SRC_DIR=/home/paul/src/
+SRC_DIR=/path/to/src/dir/ # where to install any packages from src
 #+END_EXAMPLE
 To access these variables in python code run:
 #+BEGIN_SRC python
