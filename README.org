@@ -17,6 +17,7 @@ config("PROJECT_DIR")
 
 
 * virtualenv
+Initialize a virtualenv in python3.8
 #+BEGIN_SRC sh
 virtualenv ~/.virtualenvs/pcam --python=python3.8
 source ~/.virtualenvs/pcam/bin/activate
@@ -27,7 +28,11 @@ if you're not using linux).
 #+begin_SRC sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 #+END_SRC
-
+** other requirements
+After having run this, install the rest of the requirements using:
+#+BEGIN_SRC sh
+pip install -r requirements.txt
+#+END_SRC
 
 * data
 
