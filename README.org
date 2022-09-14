@@ -24,7 +24,7 @@ source ~/.virtualenvs/pcam/bin/activate
 #+END_SRC
 ** pytorch
 Install pytorch using the following command (but look at https://pytorch.org/
-if you're not using linux).
+if you're not using Linux).
 #+begin_SRC sh
 pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 #+END_SRC
