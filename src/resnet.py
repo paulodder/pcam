@@ -10,24 +10,6 @@ from torch.utils.data.sampler import SubsetRandomSampler
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# def get_model(model_name, num_classes=2):
-#     """
-#     Returns the model architecture for the provided model_name.
-
-#     Args:
-#         model_name: Name of the model architecture to be returned.
-#                     Options: ['resnet34']
-#         num_classes: Number of classes for the final layer
-#     Returns:
-#         model: nn.Module object representing the model architecture.
-#     """
-#     if model_name == "resnet34":
-#         model = ResNet(ResidualBlock, [3, 4, 6, 3], num_classes=2)
-#     else:
-#         assert False, f'Unknown network architecture "{model_name}"'
-#     return model
-
-
 class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels, downsample):
         super().__init__()
@@ -51,12 +33,12 @@ class ResBlock(nn.Module):
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.bn2 = nn.BatchNorm2d(out_channels)
 
-    def forward(self, input):
-        shortcut = self.shortcut(input)
-        input = nn.ReLU()(self.bn1(self.conv1(input)))
-        input = nn.ReLU()(self.bn2(self.conv2(input)))
-        input = input + shortcut
-        return nn.ReLU()(input)
+    def forward(self, x):
+        shortcut = self.shortcut(x)
+        x = nn.ReLU()(self.bn1(self.conv1(x)))
+        x = nn.ReLU()(self.bn2(self.conv2(x)))
+        x = x + shortcut
+        return nn.ReLU()(x)
 
 
 class ResNet(nn.Module):
@@ -98,16 +80,16 @@ class ResNet(nn.Module):
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
         self.fc = torch.nn.Linear(512, outputs)
 
-    def forward(self, input):
-        input = self.layer0(input)
-        input = self.layer1(input)
-        input = self.layer2(input)
-        input = self.layer3(input)
-        input = self.layer4(input)
-        input = self.gap(input)
-        input = torch.flatten(input, 1)
-        input = self.fc(input)
-        return input
+    def forward(self, x):
+        x = self.layer0(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.gap(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
 
 
 # class ResidualBlock(nn.Module):

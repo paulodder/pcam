@@ -61,15 +61,14 @@ setproctitle==1.3.2
 shortuuid==1.0.9
 six==1.16.0
 smmap==5.0.0
--e git+ssh://git@github.com/paulodder/pcam.git@7f381eb87253e450c24a31a9785f8105369b318f#egg=src
 stack-data==0.5.0
 tensorboard==2.10.0
 tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.1
-torch==1.12.1+cu116
-torchaudio==0.12.1+cu116
+torch==1.12.1
+torchaudio==0.12.1
 torchmetrics==0.9.3
-torchvision==0.13.1+cu116
+torchvision==0.13.1
 tqdm==4.64.1
 traitlets==5.4.0
 typing_extensions==4.3.0
