@@ -55,7 +55,9 @@ Find the exact names of the files and run the following:
 #+BEGIN_SRC sh
 source .env
 mkdir -p $DATA_DIR
-unzip ~/Downloads/pcamv1-20220914T134745Z-001.zip -d $DATA_DIR/ # change the exact name of the file here
+unzip ~/Downloads/pcamv1-20220914T134745Z-001.zip -d /tmp/ # change the exact name of the file here
+mv /tmp/pcamv1/* $DATA_DIR/
+gunzip $DATA_DIR/*gz
 #mv ~/Downloads/ add .gz instructions
 #+END_SRC
 
