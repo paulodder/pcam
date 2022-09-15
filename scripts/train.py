@@ -7,7 +7,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
 
-from src import utils
+from src.dataset import get_dataloader
 from src.resnet import ResNet, ResBlock
 
 # X, Y = next(iter(utils.get_dataloader("test")))
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     )
     # get dataloaders
     split2loader = {
-        split: utils.get_dataloader(split, **wandb_config["dataset_config"])
+        split: get_dataloader(split, **wandb_config["dataset_config"])
         for split in ["test", "validation"]
     }
     # breakpoint()
