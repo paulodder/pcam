@@ -8,7 +8,7 @@ from src.constants import DDIR
 
 def calc_mean__std():
     print("Calculating mean__std")
-    x = h5py.File(DDIR / "camelyonpatch_level_2_split_valid_x.h5", "r")["x"][
+    x = h5py.File(DDIR / "camelyonpatch_level_2_split_test_x.h5", "r")["x"][
         :
     ].squeeze()
     # x = h5py.File('camelyonpatch_level_2_split_train_x.h5', "r")["x"][:].squeeze()
