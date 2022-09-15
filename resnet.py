@@ -1,9 +1,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torchvision import datasets
-from torchvision import transforms
-from torch.utils.data.sampler import SubsetRandomSampler
 
 
 # Device configuration
@@ -70,8 +67,7 @@ class ResidualBlock(nn.Module):
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=2):
         super(ResNet, self).__init__()
-        self.inplanes = 64
-        self.conv1 = nn.Sequential()
+        self.inplanes = 96
         self.net = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),  # conv1
             nn.BatchNorm2d(64),  # conv1
