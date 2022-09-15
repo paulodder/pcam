@@ -78,7 +78,17 @@ class ResNet(nn.Module):
         )
 
         self.gap = torch.nn.AdaptiveAvgPool2d(1)
-        self.fc = torch.nn.Linear(512, outputs)
+        self.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(512, 256),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            # nn.Dropout(dp_rate_linear * 0.5),
+            nn.ReLU(),
+            # nn.Dropout(dp_rate_linear * 0.5),
+            nn.Linear(128, outputs),
+        )
 
     def forward(self, x):
         x = self.layer0(x)
