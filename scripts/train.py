@@ -20,7 +20,7 @@ def get_parser():
     # dataloader arguments
     parser.add_argument("--batch_size", default=128, type=int)
     # optimizer arguments
-    parser.add_argument("--lr", default=0.001)
+    parser.add_argument("--lr", default=0.0005)
     parser.add_argument(
         "--weight_decay",
         default=0.01,
@@ -87,6 +87,7 @@ class PCAMPredictor(pl.LightningModule):
         loss, acc = self.forward(batch, mode="train")
         wandb.log({"loss": loss, "acc": acc})
         return loss
+        # return {"loss": loss, "training_acc": acc}
 
     def validation_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="val")
@@ -98,10 +99,12 @@ class PCAMPredictor(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
+        print(len(outputs), acc)
         wandb.log({"validation_acc": acc, "validation_loss": loss})
 
     def test_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="test")
+
         return {
             "loss": loss,
             "acc": acc,
@@ -110,6 +113,7 @@ class PCAMPredictor(pl.LightningModule):
     def test_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
+        print(len(outputs), acc)
         wandb.log({"test_acc": acc, "test_loss": loss})
 
     def forward(self, data, mode="train"):
@@ -123,6 +127,7 @@ class PCAMPredictor(pl.LightningModule):
 if __name__ == "__main__":
     # args = parse_args()
     args = get_mock_args()
+
     wandb_config = {
         "dataset_config": {"batch_size": args.batch_size},
         "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
@@ -137,12 +142,20 @@ if __name__ == "__main__":
         split: utils.get_dataloader(split, **wandb_config["dataset_config"])
         for split in ["test", "validation"]
     }
+    # breakpoint()
     model = PCAMPredictor(
         wandb_config["model_config"], wandb_config["optimizer_config"]
     )
+    wandb_config["model_signature"] = str(model).split("\n")
     trainer = pl.Trainer(
         gpus=1 if torch.cuda.is_available() else 0,
         max_epochs=args.max_epochs,
     )
-    trainer.fit(model, split2loader["test"], split2loader["validation"])
-    test_result = trainer.test(model, split2loader["test"], verbose=False)
+    trainer.fit(
+        model,
+        train_dataloaders=split2loader["test"],
+        val_dataloaders=split2loader["validation"],
+    )
+    test_result = trainer.test(
+        model, split2loader["validation"], verbose=False
+    )
