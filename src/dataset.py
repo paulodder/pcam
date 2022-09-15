@@ -4,7 +4,7 @@ import h5py
 import pandas as pd
 from src.mean__std import get_mean__std
 
-from constants import DDIR, SPLIT_NAME2FNAME
+from src.constants import DDIR, SPLIT_NAME2FNAME
 
 
 class PcamDataset(Dataset):
