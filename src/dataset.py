@@ -11,8 +11,9 @@ class PcamDataset(Dataset):
     def __init__(self, x_path, y_path, meta_path):
 
         mean__std = get_mean__std()
-        self.mean = mean__std[0]
-        self.std = mean__std[1]
+        self.mean = mean__std[0][:, None][:, None]
+        self.std = mean__std[1][:, None][:, None]
+
         x = h5py.File(x_path, "r")["x"][:].squeeze()
         N, H, W, C = x.shape
         self.x = x.reshape(N, C, H, W)
