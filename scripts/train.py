@@ -8,18 +8,40 @@ import pytorch_lightning as pl
 import numpy as np
 
 from src import utils
+from src.resnet import ResNet, ResBlock
+
+# X, Y = next(iter(utils.get_dataloader("test")))
+# X = X.to("cuda:0")
+# Y = Y.to("cuda:0")
 
 
 def get_parser():
     parser = ArgumentParser()
     # dataloader arguments
-    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--batch_size", default=128, type=int)
     # optimizer arguments
     parser.add_argument("--lr", default=0.001)
     parser.add_argument(
         "--weight_decay",
         default=0.01,
     )
+    # model args
+    parser.add_argument(
+        "--block",
+        default=ResBlock,
+    )
+    parser.add_argument(
+        "--layers",
+        default=[3, 4, 6, 3],
+        type=int,
+    )
+    # run arguments
+    parser.add_argument(
+        "--max_epochs",
+        default=10,
+        type=int,
+    )
+
     return parser
 
 
@@ -47,9 +69,10 @@ class PCAMPredictor(pl.LightningModule):
         model_config,
         optimizer_config,
     ):
+        super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.model = None  # (**model_config)
+        self.model = ResNet(**model_config)
         self.loss_module = nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self):
@@ -87,12 +110,13 @@ class PCAMPredictor(pl.LightningModule):
     def test_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        wandb.log({"validation_acc": acc, "validation_loss": loss})
+        wandb.log({"test_acc": acc, "test_loss": loss})
 
     def forward(self, data, mode="train"):
-        y_pred_proba = self.model(data.x)
-        loss = self.loss_module(y_pred_proba, data.y)
-        acc = (y_pred_proba.round() == data.y).mean()
+        x, y = data
+        y_pred_proba = self.model(x)
+        loss = self.loss_module(y_pred_proba, y)
+        acc = ((y_pred_proba > 0.5).int() == y.int()).float().mean()
         return loss, acc
 
 
@@ -102,14 +126,16 @@ if __name__ == "__main__":
     wandb_config = {
         "dataset_config": {"batch_size": args.batch_size},
         "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
+        "model_config": {"in_channels": 3, "resblock_cls": ResBlock},
     }
     wandb.init(
         project="pcam",
         config=wandb_config,
     )
+    # get dataloaders
     split2loader = {
         split: utils.get_dataloader(split, **wandb_config["dataset_config"])
-        for split in ["train", "test", "validation"]
+        for split in ["test", "validation"]
     }
     model = PCAMPredictor(
         wandb_config["model_config"], wandb_config["optimizer_config"]
@@ -118,10 +144,5 @@ if __name__ == "__main__":
         gpus=1 if torch.cuda.is_available() else 0,
         max_epochs=args.max_epochs,
     )
-    trainer.fit(model, split2loader["train"], split2loader["validation"])
-    # train_loader = utils.get_dataloader(
-    #     'train', **wandb_config["dataset_config"]
-    # )
-    # test_loader = utils.get_dataloader(
-    #     'test', **wandb_config["dataset_config"]
-    # )
+    trainer.fit(model, split2loader["test"], split2loader["validation"])
+    test_result = trainer.test(model, split2loader["test"], verbose=False)
