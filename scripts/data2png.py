@@ -13,4 +13,4 @@ ds = get_dataset("validation")
 for i, img_ten in enumerate(ds.x):
     img_ten = np.reshape(img_ten, (96, 96, 3))
     img = Image.fromarray(img_ten, "RGB")
-    img.save(os.path.join(config("PROJECT_DIR"), img_folder, "img{i}.png"))
+    img.save(os.path.join(config("PROJECT_DIR"), img_folder, f"img{i}.png"))
