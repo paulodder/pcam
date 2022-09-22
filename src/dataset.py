@@ -52,14 +52,14 @@ def get_dataset(split_name, mask_type=None):
     fpath_x, fpath_y, fpath_meta = (
         DDIR / x for x in SPLIT_NAME2FNAME[split_name]
     )
-    if mask_type is not None:
-        if mask_type in ACCEPTED_MASKS:
-            fpath_mask = make_mask_fpath(split_name, mask_type)
-        else:
-            print(f"mask type {mask_type} is not accepted")
-            return
-    else:
+
+    if mask_type is None:
         fpath_mask = None
+    elif mask_type in ACCEPTED_MASKS:
+        fpath_mask = make_mask_fpath(split_name, mask_type)
+    else:
+        print(f"mask type {mask_type} is not accepted")
+        return
 
     ds = PcamDataset(fpath_x, fpath_y, fpath_meta, fpath_mask)
     return ds
