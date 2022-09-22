@@ -22,7 +22,7 @@ class PcamDataset(Dataset):
         N, H, W, C = x.shape
         self.x = x.reshape(N, C, H, W)
 
-        if mask_path not is None:
+        if mask_path is not None:
             if Path(mask_path).exists():
                 with open(mask_path, "rb") as f:
                     self.mask = pickle.load(f)
@@ -43,18 +43,23 @@ class PcamDataset(Dataset):
         y = [self.y[idx]]
         return Tensor(x), Tensor(y)
 
+
 def make_mask_fpath(split_name, mask_type):
     return Path(DDIR) / f"{mask_type}_{split_name}.pkl"
+
 
 def get_dataset(split_name, mask_type=None):
     fpath_x, fpath_y, fpath_meta = (
         DDIR / x for x in SPLIT_NAME2FNAME[split_name]
     )
-    if mask_type in ACCEPTED_MASKS:
-        fpath_mask = make_mask_fpath(split_name, mask_type)
+    if mask_type is not None:
+        if mask_type in ACCEPTED_MASKS:
+            fpath_mask = make_mask_fpath(split_name, mask_type)
+        else:
+            print(f"mask type {mask_type} is not accepted")
+            return
     else:
-        print(f"mask type {mask_type} is not accepted")
-        return
+        fpath_mask = None
 
     ds = PcamDataset(fpath_x, fpath_y, fpath_meta, fpath_mask)
     return ds
