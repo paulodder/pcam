@@ -20,3 +20,5 @@ SPLIT_NAME2FNAME = {
         "camelyonpatch_level_2_split_train_meta.csv",
     ),
 }
+
+ACCEPTED_MASKS = ["otsu"]
