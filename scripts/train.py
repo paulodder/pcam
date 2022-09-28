@@ -10,6 +10,7 @@ import numpy as np
 from src.dataset import get_dataloader
 from src.resnet import ResNet, ResBlock
 from src.GCNN import GResNet18, GResNet50, GResNet34
+from src.densenet import fA_P4DenseNet
 
 # X, Y = next(iter(utils.get_dataloader("test")))
 # X = X.to("cuda:0")
@@ -83,7 +84,7 @@ class PCAMPredictor(pl.LightningModule):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.model = GResNet34(**model_config)
+        self.model = fA_P4DenseNet()
         self.loss_module = nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self):
@@ -143,11 +144,11 @@ if __name__ == "__main__":
     wandb_config = {
         "dataset_config": {
             "batch_size": args.batch_size,
-            "mask_type": "otsu",
+            "mask_type": None,
         },
         "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
         "model_config": {"dropout_p": 0.5},
-        "model_type": "GResNet",
+        "model_type": "fA_P4DenseNet",
         "train_on": "train",
         "validate_on": "validation",
         "test_on": "test",
