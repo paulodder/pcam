@@ -9,16 +9,27 @@ import numpy as np
 
 from src.dataset import get_dataloader
 from src.resnet import ResNet, ResBlock
+from src.GCNN import GResNet18, GResNet50, GResNet34
 
 # X, Y = next(iter(utils.get_dataloader("test")))
 # X = X.to("cuda:0")
 # Y = Y.to("cuda:0")
+def force_cudnn_initialization():
+    s = 32
+    dev = torch.device("cuda")
+    torch.nn.functional.conv2d(
+        torch.zeros(s, s, s, s, device=dev),
+        torch.zeros(s, s, s, s, device=dev),
+    )
+
+
+force_cudnn_initialization()
 
 
 def get_parser():
     parser = ArgumentParser()
     # dataloader arguments
-    parser.add_argument("--batch_size", default=128, type=int)
+    parser.add_argument("--batch_size", default=48, type=int)
     # optimizer arguments
     parser.add_argument("--lr", default=0.0005)
     parser.add_argument(
@@ -72,7 +83,7 @@ class PCAMPredictor(pl.LightningModule):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.model = ResNet(**model_config)
+        self.model = GResNet34(**model_config)
         self.loss_module = nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self):
@@ -80,7 +91,7 @@ class PCAMPredictor(pl.LightningModule):
             self.parameters(),
             lr=self.optimizer_config["lr"],
             weight_decay=self.optimizer_config["weight_decay"],
-        )  # High lr because of small dataset and small model
+        )
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -90,6 +101,7 @@ class PCAMPredictor(pl.LightningModule):
         # return {"loss": loss, "training_acc": acc}
 
     def validation_step(self, batch, batch_idx):
+        # breakpoint()
         loss, acc = self.forward(batch, mode="val")
         return {
             "loss": loss,
@@ -99,7 +111,6 @@ class PCAMPredictor(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        print(len(outputs), acc)
         wandb.log({"validation_acc": acc, "validation_loss": loss})
 
     def test_step(self, batch, batch_idx):
@@ -118,6 +129,7 @@ class PCAMPredictor(pl.LightningModule):
 
     def forward(self, data, mode="train"):
         x, y = data
+        # breakpoint()
         y_pred_proba = self.model(x)
         loss = self.loss_module(y_pred_proba, y)
         acc = ((y_pred_proba > 0.5).int() == y.int()).float().mean()
@@ -129,33 +141,43 @@ if __name__ == "__main__":
     args = get_mock_args()
 
     wandb_config = {
-        "dataset_config": {"batch_size": args.batch_size},
+        "dataset_config": {
+            "batch_size": args.batch_size,
+            "mask_type": "otsu",
+        },
         "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
-        "model_config": {"in_channels": 3, "resblock_cls": ResBlock},
+        "model_config": {"dropout_p": 0.5},
+        "model_type": "GResNet",
+        "train_on": "train",
+        "validate_on": "validation",
+        "test_on": "test",
     }
+    ds_conf = wandb_config["dataset_config"]
+
+    # get dataloaders
+    split2loader = {
+        split: get_dataloader(split, **ds_conf)
+        for split in ["test", "validation", "train"]
+    }
+
+    model = PCAMPredictor(
+        wandb_config.get("model_config"), wandb_config["optimizer_config"]
+    )
+    wandb_config["model_signature"] = str(model).split("\n")
     wandb.init(
         project="pcam",
         config=wandb_config,
     )
-    # get dataloaders
-    split2loader = {
-        split: get_dataloader(split, **wandb_config["dataset_config"])
-        for split in ["test", "validation"]
-    }
-    # breakpoint()
-    model = PCAMPredictor(
-        wandb_config["model_config"], wandb_config["optimizer_config"]
-    )
-    wandb_config["model_signature"] = str(model).split("\n")
     trainer = pl.Trainer(
         gpus=1 if torch.cuda.is_available() else 0,
         max_epochs=args.max_epochs,
+        num_sanity_val_steps=0,
     )
     trainer.fit(
         model,
-        train_dataloaders=split2loader["test"],
-        val_dataloaders=split2loader["validation"],
+        train_dataloaders=split2loader[wandb_config.get("train_on")],
+        val_dataloaders=split2loader[wandb_config.get("validate_on")],
     )
     test_result = trainer.test(
-        model, split2loader["validation"], verbose=False
+        model, split2loader[wandb_config.get("test_on")], verbose=False
     )

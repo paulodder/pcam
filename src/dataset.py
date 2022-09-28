@@ -11,8 +11,7 @@ from src.constants import DDIR, SPLIT_NAME2FNAME, ACCEPTED_MASKS
 
 
 class PcamDataset(Dataset):
-    def __init__(self, x_path, y_path, meta_path, mask_path=None):
-
+    def __init__(self, x_path, y_path, meta_path, mask_path):
         mean__std = get_mean__std()
         self.mean = mean__std[0][:, None][:, None]
         self.std = mean__std[1][:, None][:, None]
@@ -65,15 +64,17 @@ def get_dataset(split_name, mask_type=None):
         fpath_mask = None
     elif mask_type in ACCEPTED_MASKS:
         fpath_mask = make_mask_fpath(split_name, mask_type)
-    else:
+    elif mask_type is not None:
         print(f"mask type {mask_type} is not accepted")
         return
+    else:
+        fpath_mask = None
 
     ds = PcamDataset(fpath_x, fpath_y, fpath_meta, fpath_mask)
     return ds
 
 
-def get_dataloader(split_name, batch_size=64):
-    ds = get_dataset(split_name)
+def get_dataloader(split_name, mask_type, batch_size):
+    ds = get_dataset(split_name, mask_type)
     dl = DataLoader(ds, batch_size=batch_size, shuffle=True)
     return dl
