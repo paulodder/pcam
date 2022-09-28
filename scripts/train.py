@@ -14,12 +14,22 @@ from src.GCNN import GResNet18, GResNet50, GResNet34
 # X, Y = next(iter(utils.get_dataloader("test")))
 # X = X.to("cuda:0")
 # Y = Y.to("cuda:0")
+def force_cudnn_initialization():
+    s = 32
+    dev = torch.device("cuda")
+    torch.nn.functional.conv2d(
+        torch.zeros(s, s, s, s, device=dev),
+        torch.zeros(s, s, s, s, device=dev),
+    )
+
+
+force_cudnn_initialization()
 
 
 def get_parser():
     parser = ArgumentParser()
     # dataloader arguments
-    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--batch_size", default=48, type=int)
     # optimizer arguments
     parser.add_argument("--lr", default=0.0005)
     parser.add_argument(
@@ -73,7 +83,7 @@ class PCAMPredictor(pl.LightningModule):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.model = GResNet18(**model_config)
+        self.model = GResNet34(**model_config)
         self.loss_module = nn.BCEWithLogitsLoss()
 
     def configure_optimizers(self):
@@ -81,7 +91,7 @@ class PCAMPredictor(pl.LightningModule):
             self.parameters(),
             lr=self.optimizer_config["lr"],
             weight_decay=self.optimizer_config["weight_decay"],
-        )  # High lr because of small dataset and small model
+        )
         return optimizer
 
     def training_step(self, batch, batch_idx):
@@ -101,7 +111,6 @@ class PCAMPredictor(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        print(len(outputs), acc)
         wandb.log({"validation_acc": acc, "validation_loss": loss})
 
     def test_step(self, batch, batch_idx):
@@ -132,21 +141,25 @@ if __name__ == "__main__":
     args = get_mock_args()
 
     wandb_config = {
-        "dataset_config": {"batch_size": args.batch_size},
+        "dataset_config": {
+            "batch_size": args.batch_size,
+            "mask_type": "otsu",
+        },
         "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
         "model_config": {"dropout_p": 0.5},
         "model_type": "GResNet",
-        "train_on": "test",
+        "train_on": "train",
         "validate_on": "validation",
         "test_on": "test",
     }
+    ds_conf = wandb_config["dataset_config"]
 
     # get dataloaders
     split2loader = {
-        split: get_dataloader(split, **wandb_config["dataset_config"])
+        split: get_dataloader(split, **ds_conf)
         for split in ["test", "validation", "train"]
     }
-    # breakpoint()
+
     model = PCAMPredictor(
         wandb_config.get("model_config"), wandb_config["optimizer_config"]
     )
