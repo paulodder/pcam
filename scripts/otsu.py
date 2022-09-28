@@ -8,7 +8,7 @@ from pathlib import Path
 
 params = {"split_channels": True}
 
-show_masks = False
+show_masks = True
 
 
 def segment_cell(channels, show_masks=False):
@@ -30,7 +30,7 @@ def segment_cell(channels, show_masks=False):
         channels_masked = []
         for channel, mask in zip(channels, masks):
             channel_masked = channel.copy()
-            channel_masked[mask == 1] = 0
+            channel_masked[mask == -1] = 0
             channels_masked.append(channel_masked)
         show_img = (
             cv2.hconcat(channels_masked)
