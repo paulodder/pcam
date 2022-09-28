@@ -8,7 +8,7 @@ from pathlib import Path
 
 params = {"split_channels": True}
 
-show_masks = False
+show_masks = True
 
 
 def segment_cell(channels, show_masks=False):
@@ -18,13 +18,8 @@ def segment_cell(channels, show_masks=False):
     # do it for the separate channels
     masks = []
     for channel in channels:
-        cv2_mask = cv2.adaptiveThreshold(
-            channel,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11,
-            2,
+        _, cv2_mask = cv2.threshold(
+            channel, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
         )
 
         bool_mask = (cv2_mask > 0).astype(int)
@@ -59,7 +54,8 @@ for dataset_split in ["validation", "test", "train"]:
     cells = []
     for img_ten in ds.x:
         img_ten = np.reshape(img_ten, (96, 96, 3))
-        img_bgr = cv2.cvtColor(img_ten, cv2.COLOR_RGB2BGR)
+        # img_bgr = cv2.cvtColor(img_ten, cv2.COLOR_RGB2BGR)
+        img_bgr = img_ten
         if params["split_channels"]:
             cell = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
             cells.append(cv2.split(cell)[:-1])  # only take h and s channel
