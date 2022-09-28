@@ -21,4 +21,4 @@ SPLIT_NAME2FNAME = {
     ),
 }
 
-ACCEPTED_MASKS = ["otsu"]
+ACCEPTED_MASKS = ["otsu", "otsu_split"]
