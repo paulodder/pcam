@@ -8,7 +8,7 @@ from pathlib import Path
 
 params = {"split_channels": True}
 
-show_masks = True
+show_masks = False
 
 
 def segment_cell(channels, show_masks=False):
