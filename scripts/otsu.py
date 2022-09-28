@@ -54,8 +54,7 @@ for dataset_split in ["validation", "test", "train"]:
     cells = []
     for img_ten in ds.x:
         img_ten = np.reshape(img_ten, (96, 96, 3))
-        # img_bgr = cv2.cvtColor(img_ten, cv2.COLOR_RGB2BGR)
-        img_bgr = img_ten
+        img_bgr = cv2.cvtColor(img_ten, cv2.COLOR_RGB2BGR)
         if params["split_channels"]:
             cell = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
             cells.append(cv2.split(cell)[:-1])  # only take h and s channel
