@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 img_folder = "imgs_png"
-Path(img_folder).mkdir(exist_ok=True)
+Path(os.path.join(config("PROJECT_DIR"), img_folder)).mkdir(exist_ok=True)
 
 ds = get_dataset("validation")
 

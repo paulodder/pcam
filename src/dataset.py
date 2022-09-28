@@ -49,6 +49,14 @@ def make_mask_fpath(split_name, mask_type):
 
 
 def get_dataset(split_name, mask_type=None):
+    """
+    Create a PcamDataset instance
+
+    args:
+    - split_name (str): one of ["train", "test", "validation"]
+    - mask_type (str): if a mask should be added to the data, can be
+                       one of src.constants.ACCEPTED_MASKS
+    """
     fpath_x, fpath_y, fpath_meta = (
         DDIR / x for x in SPLIT_NAME2FNAME[split_name]
     )
