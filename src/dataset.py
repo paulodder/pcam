@@ -7,7 +7,12 @@ import numpy as np
 from pathlib import Path
 from src.mean__std import get_mean__std
 
-from src.constants import DDIR, SPLIT_NAME2FNAME, ACCEPTED_MASKS
+from src.constants import (
+    DDIR,
+    SPLIT_NAME2FNAME,
+    ACCEPTED_MASKS,
+    ACCEPTED_PREPROCESS,
+)
 
 
 class PcamDataset(Dataset):
@@ -17,7 +22,14 @@ class PcamDataset(Dataset):
         self.std = mean__std[1][:, None][:, None]
         self.mask_path = mask_path
 
-        x = h5py.File(x_path, "r")["x"][:].squeeze()
+        breakpoint()
+        if x_path.suffix == ".h5":
+            x = h5py.File(x_path, "r")["x"][:].squeeze()
+        elif x_path.suffix == ".pkl":
+            with open(x_path, "rb") as f:
+                x = pickle.load(f)
+        else:
+            print("x_path filetype not supported")
         N, H, W, C = x.shape
         self.x = x.reshape(N, C, H, W)
 
@@ -44,21 +56,31 @@ class PcamDataset(Dataset):
 
 
 def make_mask_fpath(split_name, mask_type):
-    return Path(DDIR) / f"{mask_type}_{split_name}.pkl"
+    return DDIR / f"{mask_type}_{split_name}.pkl"
 
 
-def get_dataset(split_name, mask_type=None):
+def make_prepr_fpath(split_name, preprocess):
+    return DDIR / f"{preprocess}_{split_name}_x.pkl"
+
+
+def get_dataset(split_name, mask_type=None, preprocess=None):
     """
     Create a PcamDataset instance
 
     args:
     - split_name (str): one of ["train", "test", "validation"]
-    - mask_type (str): if a mask should be added to the data, can be
-                       one of src.constants.ACCEPTED_MASKS
+    - mask_type (str) : what mask should be added to the data, can be one
+                        of src.constants.ACCEPTED_MASKS or None (default)
+    - preprocess (str): what preprocessing should be applied to the data, can be
+                        one of src.constants.ACCEPTED_PREPROCESS or None
+                        (default)
     """
     fpath_x, fpath_y, fpath_meta = (
         DDIR / x for x in SPLIT_NAME2FNAME[split_name]
     )
+
+    if preprocess in ACCEPTED_PREPROCESS:
+        fpath_x = make_prepr_fpath(split_name, preprocess)
 
     if mask_type is None:
         fpath_mask = None
