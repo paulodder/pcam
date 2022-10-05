@@ -22,7 +22,6 @@ class PcamDataset(Dataset):
         self.std = mean__std[1][:, None][:, None]
         self.mask_path = mask_path
 
-        breakpoint()
         if x_path.suffix == ".h5":
             x = h5py.File(x_path, "r")["x"][:].squeeze()
         elif x_path.suffix == ".pkl":
