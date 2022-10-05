@@ -85,12 +85,14 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, dropout_p, num_classes=1):
+    def __init__(
+        self, block, num_blocks, in_channels, dropout_p, num_classes=1
+    ):
         super(ResNet, self).__init__()
         self.in_planes = 23
 
         self.conv1 = P4MConvZ2(
-            4, 23, kernel_size=3, stride=1, padding=1, bias=False
+            in_channels, 23, kernel_size=3, stride=1, padding=1, bias=False
         )
         self.bn1 = nn.BatchNorm3d(23)
         self.layer1 = self._make_layer(block, 23, num_blocks[0], stride=1)
@@ -136,7 +138,7 @@ class ResNet(nn.Module):
         return out
 
 
-def GResNet18(dropout_p):
+def GResNet18(in_channels, dropout_p):
     return ResNet(
         BasicBlock,
         [
@@ -145,12 +147,13 @@ def GResNet18(dropout_p):
             2,
             2,
         ],
+        in_channels,
         dropout_p,
     )
 
 
-def GResNet34(dropout_p):
-    return ResNet(BasicBlock, [3, 4, 4, 3], dropout_p)
+def GResNet34(in_channels, dropout_p):
+    return ResNet(BasicBlock, [3, 4, 3, 2], in_channels, dropout_p)
 
 
 def GResNet50(dropout_p):
