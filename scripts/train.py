@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 import wandb
 import torch
@@ -6,11 +7,15 @@ import torch.optim as optim
 import torch.nn as nn
 import pytorch_lightning as pl
 import numpy as np
+from decouple import config
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.nn import functional as F
 
 from src.dataset import get_dataloader
 from src.resnet import ResNet, ResBlock
 from src.GCNN import GResNet18, GResNet50, GResNet34
-from src.densenet import fA_P4DenseNet
+from src.densenet import fA_P4DenseNet, fA_P4MDenseNet, P4MDenseNet, P4DenseNet
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 # X, Y = next(iter(utils.get_dataloader("test")))
 # X = X.to("cuda:0")
@@ -24,55 +29,26 @@ def force_cudnn_initialization():
     )
 
 
-force_cudnn_initialization()
+NET_STR2INIT_FUNC = {
+    "fA_P4DenseNet": fA_P4DenseNet,
+    "fA_P4MDenseNet": fA_P4MDenseNet,
+    "P4MDenseNet": P4MDenseNet,
+    "P4DenseNet": P4DenseNet,
+    "GResNet18": GResNet18,
+}
 
 
-def get_parser():
-    parser = ArgumentParser()
-    # dataloader arguments
-    parser.add_argument("--batch_size", default=48, type=int)
-    # optimizer arguments
-    parser.add_argument("--lr", default=0.0005)
-    parser.add_argument(
-        "--weight_decay",
-        default=0.01,
-    )
-    # model args
-    parser.add_argument(
-        "--block",
-        default=ResBlock,
-    )
-    parser.add_argument(
-        "--layers",
-        default=[3, 4, 6, 3],
-        type=int,
-    )
-    # run arguments
-    parser.add_argument(
-        "--max_epochs",
-        default=10,
-        type=int,
-    )
-
-    return parser
+def reduce_plat(optimizer):
+    return {
+        "scheduler": ReduceLROnPlateau(optimizer, "min"),
+        "monitor": "val_loss",
+        "frequency": 1,
+    }
 
 
-def get_mock_args(overwrite_kwargs=dict()):
-    "for dev purposes"
-    parser = get_parser()
-    args, _ = parser.parse_known_args(None, None)
+SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat}
 
-    class Args(object):
-        pass
-
-    mock_args = Args()
-    for name, default_value in args._get_kwargs():
-        setattr(mock_args, name, overwrite_kwargs.get(name, default_value))
-    return mock_args
-
-
-def parse_args():
-    return get_parser().parse_args()
+# force_cudnn_initialization()x
 
 
 class PCAMPredictor(pl.LightningModule):
@@ -84,8 +60,21 @@ class PCAMPredictor(pl.LightningModule):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.model = fA_P4DenseNet()
+
+        model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
+
+        if "GRes" in model_config["model_type"]:
+            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
+                model_config["in_channels"], model_config["dropout_p"]
+            )
+        else:
+            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
+                # model_config["in_channels"],
+                model_config["num_blocks"],
+                model_config["n_channels"],
+            )
         self.loss_module = nn.BCEWithLogitsLoss()
+        self.val_losses = []
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(
@@ -93,7 +82,12 @@ class PCAMPredictor(pl.LightningModule):
             lr=self.optimizer_config["lr"],
             weight_decay=self.optimizer_config["weight_decay"],
         )
-        return optimizer
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": SCHED_STR2INIT_FUNC[
+                self.optimizer_config["scheduler"]
+            ](optimizer),
+        }
 
     def training_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="train")
@@ -101,18 +95,39 @@ class PCAMPredictor(pl.LightningModule):
         return loss
         # return {"loss": loss, "training_acc": acc}
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataloader_i):
         # breakpoint()
         loss, acc = self.forward(batch, mode="val")
         return {
-            "loss": loss,
-            "acc": acc,
+            f"loss": loss,
+            f"acc": acc,
         }
 
+    # def validation_step(self, batch, batch_idx):
+    #     # breakpoint()
+    #     loss, acc = self.forward(batch, mode="val")
+    #     return {
+    #         f"loss": loss,
+    #         f"acc": acc,
+    #     }
+
     def validation_epoch_end(self, outputs):
-        acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
-        loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        wandb.log({"validation_acc": acc, "validation_loss": loss})
+        if type(outputs[0]) == dict:
+            outputs = [outputs]
+
+        for dataloader_name, output in zip(
+            wandb_config["validate_on"], outputs
+        ):
+            acc = np.mean([tmp["acc"].cpu() for tmp in output])
+            loss = np.mean([tmp["loss"].cpu() for tmp in output])
+            wandb.log(
+                {
+                    f"{dataloader_name}_acc": acc,
+                    f"{dataloader_name}_loss": loss,
+                }
+            )
+            if dataloader_name == "validation":
+                self.log("val_loss", loss)
 
     def test_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="test")
@@ -131,28 +146,50 @@ class PCAMPredictor(pl.LightningModule):
     def forward(self, data, mode="train"):
         x, y = data
         # breakpoint()
-        y_pred_proba = self.model(x)
+        outp = self.model(x)
+        y_pred_proba = F.softmax(outp)
         loss = self.loss_module(y_pred_proba, y)
-        acc = ((y_pred_proba > 0.5).int() == y.int()).float().mean()
+        y_pred_proba = y_pred_proba.cpu().detach().numpy()
+        y = y.cpu().detach().numpy()
+        acc = sum(np.argmax(y_pred_proba, 1) == np.argmax(y, 1)) / len(
+            y_pred_proba
+        )
+        print(acc)
         return loss, acc
 
 
 if __name__ == "__main__":
     # args = parse_args()
-    args = get_mock_args()
+    # args = get_mock_args()
 
     wandb_config = {
         "dataset_config": {
-            "batch_size": args.batch_size,
+            "batch_size": 64,
             "mask_type": None,
         },
-        "optimizer_config": {"weight_decay": args.weight_decay, "lr": args.lr},
-        "model_config": {"dropout_p": 0.5},
-        "model_type": "fA_P4DenseNet",
+        "optimizer_config": {
+            "weight_decay": 0.0001,
+            "lr": 0.0005,
+            "scheduler": "reduce_plat",
+        },
+        "model_config": {
+            "model_type": "P4DenseNet",
+            "dropout_p": 0.5,
+            "num_blocks": 5,
+            "n_channels": 9,
+        },
         "train_on": "train",
-        "validate_on": "validation",
+        "validate_on": ["validation", "test"],
         "test_on": "test",
+        "max_epochs": 100,
+        "ngpus": 1,
     }
+
+    NUM_CHANNELS = (
+        3 if wandb_config["dataset_config"]["mask_type"] is None else 4
+    )
+    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
+
     ds_conf = wandb_config["dataset_config"]
 
     # get dataloaders
@@ -162,23 +199,39 @@ if __name__ == "__main__":
     }
 
     model = PCAMPredictor(
-        wandb_config.get("model_config"), wandb_config["optimizer_config"]
+        wandb_config.get("model_config"),
+        wandb_config["optimizer_config"],
     )
     wandb_config["model_signature"] = str(model).split("\n")
     wandb.init(
         project="pcam",
         config=wandb_config,
     )
+    run_name = wandb.run.name
+
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=10,
+        monitor="val_loss",
+        mode="min",
+        dirpath=config("MODEL_DIR"),
+        filename=f"{run_name}" + "-{epoch:02d}-{val_loss:.2f}",
+    )
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+
     trainer = pl.Trainer(
-        gpus=1 if torch.cuda.is_available() else 0,
-        max_epochs=args.max_epochs,
+        gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
+        max_epochs=wandb_config["max_epochs"],
         num_sanity_val_steps=0,
+        callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
         model,
         train_dataloaders=split2loader[wandb_config.get("train_on")],
-        val_dataloaders=split2loader[wandb_config.get("validate_on")],
+        val_dataloaders=[
+            split2loader[x] for x in wandb_config.get("validate_on")
+        ],
     )
     test_result = trainer.test(
         model, split2loader[wandb_config.get("test_on")], verbose=False
     )
+    print(trainer.callback_metrics)

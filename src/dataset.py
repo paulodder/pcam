@@ -1,4 +1,5 @@
 from torch import Tensor
+import torch
 from torch.utils.data import Dataset, DataLoader
 import h5py
 import pandas as pd
@@ -39,7 +40,8 @@ class PcamDataset(Dataset):
         x = (self.x[idx] - self.mean) / self.std
         if self.mask_path is not None:
             x = np.concatenate((x, self.mask[idx][None, :]))
-        y = [self.y[idx]]
+        y = torch.zeros(2)
+        y[int(self.y[idx])] = 1
         return Tensor(x), Tensor(y)
 
 
@@ -75,6 +77,12 @@ def get_dataset(split_name, mask_type=None):
 
 
 def get_dataloader(split_name, mask_type, batch_size):
+    shuffle = True if split_name == "train" else False
     ds = get_dataset(split_name, mask_type)
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=True)
+    dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=1)
     return dl
+
+
+ds = get_dataset("train")
+print(ds.__getitem__(1))
+breakpoint()
