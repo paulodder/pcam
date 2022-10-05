@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #SBATCH --mem=80G
 #SBATCH --job-name="train_gcnn"
 #SBATCH --time=24:00:00
@@ -6,4 +6,4 @@
 #SBATCH --gpus-per-node=1
 
 
-python /home/lcur1043/pcam/scripts/train.py
+python $HOME/pcam/scripts/train.py
