@@ -206,8 +206,8 @@ if __name__ == "__main__":
     }
     run_args = {
         "batch_size": args.batch_size,
-        "nr_inference_workers": 8,
-        "nr_post_proc_workers": 8,
+        "nr_inference_workers": 0,
+        "nr_post_proc_workers": 0,
         "patch_input_shape": tile_size,
         "patch_output_shape": patch_size,
         "input_dir": str(in_dir),
