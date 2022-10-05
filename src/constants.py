@@ -2,6 +2,7 @@ from decouple import config
 from pathlib import Path
 
 DDIR = Path(config("DATA_DIR"))
+PDIR = Path(config("PROJECT_DIR"))
 
 SPLIT_NAME2FNAME = {
     "validation": (
@@ -22,3 +23,5 @@ SPLIT_NAME2FNAME = {
 }
 
 ACCEPTED_MASKS = ["otsu", "otsu_split"]
+
+ACCEPTED_PREPROCESS = ["stain_normalize"]
