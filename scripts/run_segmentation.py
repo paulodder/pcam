@@ -35,7 +35,8 @@ def get_parser():
     parser.add_argument("--batch_size", default=10, type=int)
     parser.add_argument("--split_name", default="test", type=str)
     # optimizer arguments
-    parser.add_argument("--model_name", default="pannuke-type", type=int)
+    parser.add_argument("--model_name", default="pannuke-type", type=str)
+    parser.add_argument("--save_every", default=200, type=int)
 
     return parser
 
@@ -172,9 +173,7 @@ def remove_preprocesed_images(in_dir, indexes):
 
 
 if __name__ == "__main__":
-    args = get_mock_args(
-        {"model_name": "pannuke-type", "split_name": "test", "batch_size": 10}
-    )
+    args = parse_args()
     dataset = get_dataloader("test", None, 32).dataset.x
     mode = get_mode(str(MODEL_NAME2FPATH[args.model_name]))
     tile_size, patch_size = get_tile_and_patch_size(mode)
@@ -205,6 +204,7 @@ if __name__ == "__main__":
         # else args["type_info_path"],
     }
     run_args = {
+        "save_every": args.save_every,
         "batch_size": args.batch_size,
         "nr_inference_workers": 0,
         "nr_post_proc_workers": 0,

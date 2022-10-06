@@ -597,12 +597,11 @@ class InferManager(object):
         for variable, value in run_args.items():
             self.__setattr__(variable, value)
         assert self.mem_usage < 1.0 and self.mem_usage > 0.0
-
         # * depend on the number of samples and their size, this may be less efficient
         patterning = lambda x: re.sub("([\[\]])", "[\\1]", x)
         file_path_list = glob.glob(patterning("%s/*" % self.input_dir))
         file_path_list.sort()  # ensure same order
-        file_path_list = file_path_list[:100]
+        file_path_list = file_path_list
         assert len(file_path_list) > 0, "Not Detected Any Files From Path"
 
         rm_n_mkdir(self.output_dir + "/json/")
@@ -613,6 +612,145 @@ class InferManager(object):
         if self.save_qupath:
             rm_n_mkdir(self.output_dir + "/qupath/")
 
+        proc_pool = None
+        # if self.nr_post_proc_workers > 0:
+        #     proc_pool = ProcessPoolExecutor(self.nr_post_proc_workers)
+
+        while len(file_path_list) > 0:
+            hardware_stats = psutil.virtual_memory()
+            available_ram = getattr(hardware_stats, "available")
+            available_ram = int(available_ram * self.mem_usage)
+            # available_ram >> 20 for MB, >> 30 for GB
+
+            # TODO: this portion looks clunky but seems hard to detach into separate func
+
+            # * caching N-files into memory such that their expected (total) memory usage
+            # * does not exceed the designated percentage of currently available memory
+            # * the expected memory is a factor w.r.t original input file size and
+            # * must be manually provided
+            file_idx = 0
+            use_path_list = []
+            cache_image_list = []
+            cache_patch_info_list = []
+            cache_image_info_list = []
+            while len(file_path_list) > 0:
+                file_path = file_path_list.pop(0)
+
+                img = cv2.imread(file_path)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img = cv2.resize(
+                    img, (self.patch_input_shape, self.patch_input_shape)
+                )
+                src_shape = img.shape
+
+                img, patch_info, top_corner = _prepare_patching(
+                    img, self.patch_input_shape, self.patch_output_shape, True
+                )
+
+                # breakpoint()
+
+                # plt.imshow(img)
+                # plt.clf()
+
+                self_idx = np.full(
+                    patch_info.shape[0], file_idx, dtype=np.int32
+                )
+                patch_info = np.concatenate(
+                    [patch_info, self_idx[:, None]], axis=-1
+                )
+                # ? may be expensive op
+                patch_info = np.split(patch_info, patch_info.shape[0], axis=0)
+                patch_info = [np.squeeze(p) for p in patch_info]
+
+                # * this factor=5 is only applicable for HoVerNet
+                expected_usage = sys.getsizeof(img) * 5
+                available_ram -= expected_usage
+                if available_ram < 0:
+                    break
+
+                file_idx += 1
+                # if file_idx == 4: break
+                use_path_list.append(file_path)
+                cache_image_list.append(img)
+                cache_patch_info_list.extend(patch_info)
+                # TODO: refactor to explicit protocol
+                cache_image_info_list.append(
+                    [src_shape, len(patch_info), top_corner]
+                )
+
+            # * apply neural net on cached data
+            dataset = SerializeFileList(
+                cache_image_list, cache_patch_info_list, self.patch_input_shape
+            )
+            dataloader = data.DataLoader(
+                dataset,
+                num_workers=self.nr_inference_workers,
+                batch_size=self.batch_size,
+                drop_last=False,
+            )
+            # breakpoint()
+
+            pbar = tqdm.tqdm(
+                desc="Process Patches",
+                leave=True,
+                total=int(len(cache_patch_info_list) / self.batch_size) + 1,
+                ncols=80,
+                ascii=True,
+                position=0,
+            )
+            accumulated_patch_output = []
+            curr_file_idx = 0
+            for batch_idx, batch_data in enumerate(dataloader):
+                sample_data_list, sample_info_list = batch_data
+                sample_output_list = self.run_step(sample_data_list)
+                sample_info_list = sample_info_list.numpy()
+                curr_batch_size = sample_output_list.shape[0]
+                sample_output_list = np.split(
+                    sample_output_list, curr_batch_size, axis=0
+                )
+                sample_info_list = np.split(
+                    sample_info_list, curr_batch_size, axis=0
+                )
+                sample_output_list = list(
+                    zip(sample_info_list, sample_output_list)
+                )
+                sample_output_list
+                accumulated_patch_output.extend(sample_output_list)
+                pbar.update()
+                if len(accumulated_patch_output) != (4 * self.save_every):
+                    continue
+                else:
+                    self.save_results(
+                        accumulated_patch_output,
+                        cache_image_list,
+                        cache_image_info_list,
+                        use_path_list,
+                        proc_pool,
+                        curr_file_idx,
+                    )
+                    curr_file_idx += self.save_every
+                print(f"Saving {self.save_every} files")
+            if len(accumulated_patch_output) > 0:
+                self.save_results(
+                    accumulated_patch_output,
+                    cache_image_list,
+                    cache_image_info_list,
+                    use_path_list,
+                    proc_pool,
+                    curr_file_idx,
+                )
+        pbar.close()
+        return
+
+    def save_results(
+        self,
+        accumulated_patch_output,
+        cache_image_list,
+        cache_image_info_list,
+        use_path_list,
+        proc_pool,
+        curr_file_idx,
+    ):
         def proc_callback(results):
             """Post processing callback.
 
@@ -688,189 +826,78 @@ class InferManager(object):
             remained_items_list = remained_items_list + items_list
             return detached_items_list, remained_items_list
 
-        proc_pool = None
-        if self.nr_post_proc_workers > 0:
-            proc_pool = ProcessPoolExecutor(self.nr_post_proc_workers)
-
-        while len(file_path_list) > 0:
-
-            hardware_stats = psutil.virtual_memory()
-            available_ram = getattr(hardware_stats, "available")
-            available_ram = int(available_ram * self.mem_usage)
-            # available_ram >> 20 for MB, >> 30 for GB
-
-            # TODO: this portion looks clunky but seems hard to detach into separate func
-
-            # * caching N-files into memory such that their expected (total) memory usage
-            # * does not exceed the designated percentage of currently available memory
-            # * the expected memory is a factor w.r.t original input file size and
-            # * must be manually provided
-            file_idx = 0
-            use_path_list = []
-            cache_image_list = []
-            cache_patch_info_list = []
-            cache_image_info_list = []
-            while len(file_path_list) > 0:
-                file_path = file_path_list.pop(0)
-
-                img = cv2.imread(file_path)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                img = cv2.resize(
-                    img, (self.patch_input_shape, self.patch_input_shape)
-                )
-                src_shape = img.shape
-
-                img, patch_info, top_corner = _prepare_patching(
-                    img, self.patch_input_shape, self.patch_output_shape, True
-                )
-                import matplotlib.pyplot as plt
-
-                # breakpoint()
-
-                # plt.imshow(img)
-                # plt.clf()
-
-                self_idx = np.full(
-                    patch_info.shape[0], file_idx, dtype=np.int32
-                )
-                patch_info = np.concatenate(
-                    [patch_info, self_idx[:, None]], axis=-1
-                )
-                # ? may be expensive op
-                patch_info = np.split(patch_info, patch_info.shape[0], axis=0)
-                patch_info = [np.squeeze(p) for p in patch_info]
-
-                # * this factor=5 is only applicable for HoVerNet
-                expected_usage = sys.getsizeof(img) * 5
-                available_ram -= expected_usage
-                if available_ram < 0:
-                    break
-
-                file_idx += 1
-                # if file_idx == 4: break
-                use_path_list.append(file_path)
-                cache_image_list.append(img)
-                cache_patch_info_list.extend(patch_info)
-                # TODO: refactor to explicit protocol
-                cache_image_info_list.append(
-                    [src_shape, len(patch_info), top_corner]
-                )
-
-            # * apply neural net on cached data
-            dataset = SerializeFileList(
-                cache_image_list, cache_patch_info_list, self.patch_input_shape
+        for file_idx, file_path in enumerate(
+            use_path_list[curr_file_idx : curr_file_idx + self.save_every],
+            start=curr_file_idx,
+        ):
+            # * parallely assemble the processed cache data for
+            image_info = cache_image_info_list[file_idx]
+            (file_ouput_data, accumulated_patch_output,) = detach_items_of_uid(
+                accumulated_patch_output,
+                file_idx,
+                image_info[1],
             )
+            # * detach this into func and multiproc dispatch it
+            src_pos = image_info[2]  # src top left corner within padded image
+            src_image = cache_image_list[file_idx]
+            src_image = src_image[
+                src_pos[0] : src_pos[0] + image_info[0][0],
+                src_pos[1] : src_pos[1] + image_info[0][1],
+            ]
 
-            dataloader = data.DataLoader(
-                dataset,
-                num_workers=self.nr_inference_workers,
-                batch_size=self.batch_size,
-                drop_last=False,
+            base_name = Path(file_path).stem
+            file_info = {
+                "src_shape": image_info[0],
+                "src_image": src_image,
+                "name": base_name,
+            }
+
+            post_proc_kwargs = {
+                "nr_types": self.nr_types,
+                "return_centroids": True,
+            }  # dynamicalize this
+
+            overlay_kwargs = {
+                "draw_dot": False,  # self.draw_dot,
+                # "type_colour": self.type_info_dict,
+                "line_thickness": 2,
+            }
+            func_args = (
+                self.post_proc_func,
+                post_proc_kwargs,
+                file_ouput_data,
+                file_info,
+                overlay_kwargs,
             )
-
-            pbar = tqdm.tqdm(
-                desc="Process Patches",
-                leave=True,
-                total=int(len(cache_patch_info_list) / self.batch_size) + 1,
-                ncols=80,
-                ascii=True,
-                position=0,
-            )
-
-            accumulated_patch_output = []
-            for batch_idx, batch_data in enumerate(dataloader):
-                sample_data_list, sample_info_list = batch_data
-                sample_output_list = self.run_step(sample_data_list)
-                sample_info_list = sample_info_list.numpy()
-                curr_batch_size = sample_output_list.shape[0]
-                sample_output_list = np.split(
-                    sample_output_list, curr_batch_size, axis=0
-                )
-                sample_info_list = np.split(
-                    sample_info_list, curr_batch_size, axis=0
-                )
-                sample_output_list = list(
-                    zip(sample_info_list, sample_output_list)
-                )
-                accumulated_patch_output.extend(sample_output_list)
-                pbar.update()
-            pbar.close()
-
-            # * parallely assemble the processed cache data for each file if possible
-            future_list = []
-            for file_idx, file_path in enumerate(use_path_list):
-                image_info = cache_image_info_list[file_idx]
-                (
-                    file_ouput_data,
-                    accumulated_patch_output,
-                ) = detach_items_of_uid(
-                    accumulated_patch_output, file_idx, image_info[1]
-                )
-
-                # * detach this into func and multiproc dispatch it
-                src_pos = image_info[
-                    2
-                ]  # src top left corner within padded image
-                src_image = cache_image_list[file_idx]
-                src_image = src_image[
-                    src_pos[0] : src_pos[0] + image_info[0][0],
-                    src_pos[1] : src_pos[1] + image_info[0][1],
-                ]
-
-                base_name = Path(file_path).stem
-                file_info = {
-                    "src_shape": image_info[0],
-                    "src_image": src_image,
-                    "name": base_name,
-                }
-
-                post_proc_kwargs = {
-                    "nr_types": self.nr_types,
-                    "return_centroids": True,
-                }  # dynamicalize this
-
-                overlay_kwargs = {
-                    "draw_dot": False,  # self.draw_dot,
-                    # "type_colour": self.type_info_dict,
-                    "line_thickness": 2,
-                }
-                func_args = (
-                    self.post_proc_func,
-                    post_proc_kwargs,
-                    file_ouput_data,
-                    file_info,
-                    overlay_kwargs,
-                )
-                # breakpoint()
-                # dispatch for parallel post-processing
-                if proc_pool is not None:
-                    proc_future = proc_pool.submit(
-                        _post_process_patches, *func_args
-                    )
-                    # ! manually poll future and call callback later as there is no guarantee
-                    # ! that the callback is called from main thread
-                    future_list.append(proc_future)
-                else:
-                    proc_output = _post_process_patches(*func_args)
-                    proc_callback(proc_output)
-            if proc_pool is not None:
-                # loop over all to check state a.k.a polling
-                for future in as_completed(future_list):
-                    # TODO: way to retrieve which file crashed ?
-                    # ! silent crash, cancel all and raise error
-                    if future.exception() is not None:
-                        # breakpoint()
-                        log_info("Silent Crash")
-                        # ! cancel somehow leads to cascade error later
-                        # ! so just poll it then crash once all future
-                        # ! acquired for now
-                        # for future in future_list:
-                        #     future.cancel()
-                        # break
-                    else:
-                        file_path = proc_callback(future.result())
-                        log_info("Done Assembling %s" % file_path)
-        return
+            # breakpoint()
+            # dispatch for parallel post-processing
+            # if proc_pool is not None:
+            #     proc_future = proc_pool.submit(
+            #         _post_process_patches, *func_args
+            #     )
+            #     # ! manually poll future and call callback later as there is no guarantee
+            #     # ! that the callback is called from main thread
+            #     future_list.append(proc_future)
+            # else:
+            proc_output = _post_process_patches(*func_args)
+            proc_callback(proc_output)
+        # if proc_pool is not None:
+        #     # loop over all to check state a.k.a polling
+        #     for future in as_completed(future_list):
+        #         # TODO: way to retrieve which file crashed ?
+        #         # ! silent crash, cancel all and raise error
+        #         if future.exception() is not None:
+        #             # breakpoint()
+        #             log_info("Silent Crash")
+        #             # ! cancel somehow leads to cascade error later
+        #             # ! so just poll it then crash once all future
+        #             # ! acquired for now
+        #             # for future in future_list:
+        #             #     future.cancel()
+        #             # break
+        #         else:
+        #             file_path = proc_callback(future.result())
+        #             log_info("Done Assembling %s" % file_path)
 
 
 def create_model(mode=None, **kwargs):
