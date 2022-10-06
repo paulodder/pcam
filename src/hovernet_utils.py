@@ -718,7 +718,6 @@ class InferManager(object):
                 sample_output_list
                 accumulated_patch_output.extend(sample_output_list)
                 pbar.update()
-                breakpoint()
                 if len(accumulated_patch_output) != (4 * self.save_every):
                     continue
                 else:
