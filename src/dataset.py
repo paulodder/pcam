@@ -30,8 +30,8 @@ class PcamDataset(Dataset):
                 x = pickle.load(f)
         else:
             print("x_path filetype not supported")
-        N, H, W, C = x.shape
-        self.x = x.reshape(N, C, H, W)
+
+        self.x = x.transpose(0, 3, 1, 2)
 
         if mask_path is not None:
             if Path(mask_path).exists():
