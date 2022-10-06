@@ -104,6 +104,4 @@ def get_dataloader(split_name, mask_type, batch_size):
     return dl
 
 
-ds = get_dataset("train")
-print(ds.__getitem__(1))
 # breakpoint()
