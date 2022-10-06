@@ -13,7 +13,8 @@ from torch.nn import functional as F
 
 from src.dataset import get_dataloader
 from src.resnet import ResNet, ResBlock
-from src.GCNN import GResNet18, GResNet50, GResNet34
+
+# from src.GCNN import GResNet18, GResnet50, GResNet34
 from src.densenet import fA_P4DenseNet, fA_P4MDenseNet, P4MDenseNet, P4DenseNet
 from pytorch_lightning.callbacks import LearningRateMonitor
 
@@ -34,7 +35,7 @@ NET_STR2INIT_FUNC = {
     "fA_P4MDenseNet": fA_P4MDenseNet,
     "P4MDenseNet": P4MDenseNet,
     "P4DenseNet": P4DenseNet,
-    "GResNet18": GResNet18,
+    # "GResNet18": GResNet18,
 }
 
 
@@ -169,14 +170,14 @@ if __name__ == "__main__":
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
-            "lr": 0.0005,
+            "lr": 0.001,
             "scheduler": "reduce_plat",
         },
         "model_config": {
             "model_type": "P4DenseNet",
             "dropout_p": 0.5,
             "num_blocks": 5,
-            "n_channels": 9,
+            "n_channels": 13,
         },
         "train_on": "train",
         "validate_on": ["validation", "test"],

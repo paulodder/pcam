@@ -104,4 +104,6 @@ def get_dataloader(split_name, mask_type, batch_size):
     return dl
 
 
-# breakpoint()
+if __name__ == "__main__":
+    dl = get_dataloader("train", None, 10000)
+    breakpoint()
