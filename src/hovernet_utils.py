@@ -598,6 +598,7 @@ class InferManager(object):
             self.__setattr__(variable, value)
         assert self.mem_usage < 1.0 and self.mem_usage > 0.0
         # * depend on the number of samples and their size, this may be less efficient
+        print(f"self.save_every, {self.save_every}")
         patterning = lambda x: re.sub("([\[\]])", "[\\1]", x)
         file_path_list = glob.glob(patterning("%s/*" % self.input_dir))
         file_path_list.sort()  # ensure same order
@@ -717,9 +718,12 @@ class InferManager(object):
                 sample_output_list
                 accumulated_patch_output.extend(sample_output_list)
                 pbar.update()
+                breakpoint()
                 if len(accumulated_patch_output) != (4 * self.save_every):
                     continue
                 else:
+                    print(f"Saving {self.save_every} files")
+                    print("before", len(accumulated_patch_output))
                     self.save_results(
                         accumulated_patch_output,
                         cache_image_list,
@@ -728,8 +732,10 @@ class InferManager(object):
                         proc_pool,
                         curr_file_idx,
                     )
+                    accumulated_patch_output = []
+                    print("after", len(accumulated_patch_output))
                     curr_file_idx += self.save_every
-                print(f"Saving {self.save_every} files")
+
             if len(accumulated_patch_output) > 0:
                 self.save_results(
                     accumulated_patch_output,
