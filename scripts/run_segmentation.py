@@ -171,7 +171,10 @@ def preprocess_images(in_dir, X, indexes):
 
 def remove_preprocesed_images(in_dir, indexes):
     for index in indexes:
-        os.remove(str(in_dir / f"img{index}.png"))
+        try:
+            os.remove(str(in_dir / f"img{index}.png"))
+        except FileNotFoundError:
+            continue
 
 
 if __name__ == "__main__":
