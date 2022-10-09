@@ -163,7 +163,7 @@ class ImageManager(object):
 
 def preprocess_images(in_dir, X, indexes):
     for index, X in zip(indexes, dataset[indexes]):
-        img = Image.fromarray(X.reshape((96, 96, 3)))
+        img = Image.fromarray(X.transpose(1, 2, 0))
         img.save(in_dir / f"img{index}.png")
 
 
