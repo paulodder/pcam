@@ -37,6 +37,8 @@ def get_parser():
     # optimizer arguments
     parser.add_argument("--model_name", default="pannuke-type", type=str)
     parser.add_argument("--save_every", default=200, type=int)
+    parser.add_argument("--start_idx", default=0, type=int)
+    parser.add_argument("--end_idx", default=50000, type=int)
 
     return parser
 
@@ -204,6 +206,8 @@ if __name__ == "__main__":
         # else args["type_info_path"],
     }
     run_args = {
+        "start_idx": args.start_idx,
+        "end_idx": args.end_idx,
         "save_every": args.save_every,
         "batch_size": args.batch_size,
         "nr_inference_workers": 0,

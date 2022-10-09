@@ -599,14 +599,30 @@ class InferManager(object):
         # * depend on the number of samples and their size, this may be less efficient
         print(f"self.save_every, {self.save_every}")
         patterning = lambda x: re.sub("([\[\]])", "[\\1]", x)
-        file_path_list = glob.glob(patterning("%s/*" % self.input_dir)) # 
+        file_path_list = glob.glob(patterning("%s/*" % self.input_dir))  #
         # file_path_list.sort()  # ensure same order
-        file_path_list.sort(reverse=True)  # ensure same order        file_path_list = file_path_list
-        file_path_list.sort(key=lambda s: int(re.findall('[0-9]+', s)[0]), reverse=False)
-        print(file_path_list[:100])
+        file_path_list.sort(
+            reverse=True
+        )  # ensure same order        file_path_list = file_path_list
+
+        def extract_int(fpath):
+            return int(re.findall("[0-9]+", fpath)[0])
+
+        file_path_list.sort(key=extract_int, reverse=False)
+        file_path_list = [
+            x
+            for x in file_path_list
+            if (extract_int(x) >= self.start_idx)
+            and (extract_int(x) < self.end_idx)
+        ]
+        print(
+            "handling patches between",
+            min(map(extract_int, file_path_list)),
+            max(map(extract_int, file_path_list)),
+        )
         assert len(file_path_list) > 0, "Not Detected Any Files From Path"
 
-        #rm_n_mkdir(self.output_dir + "/json/")
+        # rm_n_mkdir(self.output_dir + "/json/")
         Path(self.output_dir + "/mat/").mkdir(exist_ok=True, parents=True)
         # rm_n_mkdir()
         # rm_n_mkdir(self.output_dir + "/mat/")
