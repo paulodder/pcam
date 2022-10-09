@@ -47,7 +47,6 @@ from misc.utils import (
     rm_n_mkdir,
 )
 from misc.viz_utils import colorize, visualize_instances_dict
-from skimage import color
 from skimage.segmentation import watershed
 
 import convert_format
@@ -638,6 +637,9 @@ class InferManager(object):
                 file_path = file_path_list.pop(0)
 
                 img = cv2.imread(file_path)
+                if img is None:
+                    print(file_path)
+                    # os.remove(img)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(
                     img, (self.patch_input_shape, self.patch_input_shape)

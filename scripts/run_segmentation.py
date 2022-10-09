@@ -174,7 +174,7 @@ def remove_preprocesed_images(in_dir, indexes):
 
 if __name__ == "__main__":
     args = parse_args()
-    dataset = get_dataloader("test", None, 32).dataset.x
+    dataset = get_dataloader(args.split_name, None, 32).dataset.x
     mode = get_mode(str(MODEL_NAME2FPATH[args.model_name]))
     tile_size, patch_size = get_tile_and_patch_size(mode)
     in_dir, out_dir = get_in_and_out_dir(args.model_name, args.split_name)
