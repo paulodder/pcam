@@ -212,7 +212,7 @@ if __name__ == "__main__":
         "patch_output_shape": patch_size,
         "input_dir": str(in_dir),
         "output_dir": str(out_dir),
-        "mem_usage": 0.99,
+        "mem_usage": 0.85,
         "draw_dot": False,
         "save_qupath": False,
         "save_raw_map": False,
