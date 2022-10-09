@@ -38,7 +38,7 @@ def get_parser():
     parser.add_argument("--model_name", default="pannuke-type", type=str)
     parser.add_argument("--save_every", default=200, type=int)
     parser.add_argument("--start_idx", default=0, type=int)
-    parser.add_argument("--end_idx", default=50000, type=int)
+    parser.add_argument("--end_idx", default=1e6, type=int)
 
     return parser
 
