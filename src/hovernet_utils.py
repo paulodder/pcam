@@ -639,6 +639,7 @@ class InferManager(object):
                 img = cv2.imread(file_path)
                 if img is None:
                     print(file_path)
+                    return
                     # os.remove(img)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(
