@@ -173,7 +173,7 @@ class TransitionBlock2D(nn.Module):
 
 
 class P4DenseNet(nn.Module):
-    def __init__(self, num_blocks=5, n_channels=24):
+    def __init__(self, in_channels, num_blocks=5, n_channels=24):
         super(P4DenseNet, self).__init__()
 
         # Parameters of the group
@@ -210,7 +210,7 @@ class P4DenseNet(nn.Module):
 
         # First layer is a convolution
         self.c1 = se2_layers.ConvRnG(
-            N_in=3,
+            N_in=in_channels,
             N_out=n_channels,
             kernel_size=kernel_size,
             h_grid=self.h_grid,
@@ -481,7 +481,7 @@ class P4MDenseNet(nn.Module):
         # Reduce to 2 channels (IMPORTANT! THIS IS DIFFERENT TO VEELING ET. AL. (2018), They use only one output channel with sigmoid)
         self.c_out = e2_layers.ConvGG(
             N_in=n_channels,
-            N_out=1,
+            N_out=2,
             kernel_size=1,
             h_grid=self.h_grid,
             input_h_grid=self.h_grid,
@@ -506,7 +506,7 @@ class P4MDenseNet(nn.Module):
         # Pooling layer
         h = self.pooling(h, kernel_size=h.shape[-1], stride=2, padding=0)
         h = h.mean(dim=2)
-        h = h.view(h.size(0), 1)
+        h = h.view(h.size(0), 2)
         return h
 
 
@@ -735,7 +735,7 @@ class fA_P4DenseNet(nn.Module):
         # Reduce to 2 channels (IMPORTANT! THIS IS DIFFERENT TO VEELING ET. AL. (2018), They use only one output channel with sigmoid)
         self.c_out = se2_layers.fAttConvGG(
             N_in=n_channels,
-            N_out=1,
+            N_out=2,
             kernel_size=1,
             h_grid=self.h_grid,
             input_h_grid=self.h_grid,
@@ -762,7 +762,7 @@ class fA_P4DenseNet(nn.Module):
         # Pooling layer
         h = self.pooling(h, kernel_size=h.shape[-1], stride=2, padding=0)
         h = h.mean(dim=2)
-        h = h.view(h.size(0), 1)
+        h = h.view(h.size(0), 2)
 
         # Visualize
         if False:
@@ -1169,7 +1169,7 @@ class fA_P4MDenseNet(nn.Module):
         # Pooling layer
         h = self.pooling(h, kernel_size=h.shape[-1], stride=2, padding=0)
         h = h.mean(dim=2)
-        h = h.view(h.size(0), 1)
+        h = h.view(h.size(0), 2)
         return h
 
 

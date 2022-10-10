@@ -70,7 +70,7 @@ class PCAMPredictor(pl.LightningModule):
             )
         else:
             self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
-                # model_config["in_channels"],
+                model_config["in_channels"],
                 model_config["num_blocks"],
                 model_config["n_channels"],
             )
@@ -119,7 +119,7 @@ class PCAMPredictor(pl.LightningModule):
         for dataloader_name, output in zip(
             wandb_config["validate_on"], outputs
         ):
-            acc = np.mean([tmp["acc"].cpu() for tmp in output])
+            acc = np.mean([tmp["acc"] for tmp in output])
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
                 {
@@ -141,7 +141,7 @@ class PCAMPredictor(pl.LightningModule):
     def test_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        print(len(outputs), acc)
+        # print(len(outputs), acc)
         wandb.log({"test_acc": acc, "test_loss": loss})
 
     def forward(self, data, mode="train"):
@@ -155,7 +155,6 @@ class PCAMPredictor(pl.LightningModule):
         acc = sum(np.argmax(y_pred_proba, 1) == np.argmax(y, 1)) / len(
             y_pred_proba
         )
-        print(acc)
         return loss, acc
 
 
@@ -174,10 +173,12 @@ if __name__ == "__main__":
             "scheduler": "reduce_plat",
         },
         "model_config": {
-            "model_type": "P4DenseNet",
+            # "model_type": "P4DenseNet",
+            # "n_channels": 13,
+            "model_type": "fA_P4DenseNet",
+            "n_channels": 9,
             "dropout_p": 0.5,
             "num_blocks": 5,
-            "n_channels": 13,
         },
         "train_on": "train",
         "validate_on": ["validation", "test"],
