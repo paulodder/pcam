@@ -141,7 +141,7 @@ def evaluate_model():
         "train_on": "train",
         "validate_on": ["validation"],
         "test_on": "test",
-        "max_epochs": 100,
+        "max_epochs": 50,
         "ngpus": 1,
     }
     NUM_CHANNELS = 3 if config["dataset_config"]["mask_type"] is None else 4
