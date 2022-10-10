@@ -37,6 +37,8 @@ def get_parser():
     # optimizer arguments
     parser.add_argument("--model_name", default="pannuke-type", type=str)
     parser.add_argument("--save_every", default=200, type=int)
+    parser.add_argument("--start_idx", default=0, type=int)
+    parser.add_argument("--end_idx", default=1e6, type=int)
 
     return parser
 
@@ -163,18 +165,21 @@ class ImageManager(object):
 
 def preprocess_images(in_dir, X, indexes):
     for index, X in zip(indexes, dataset[indexes]):
-        img = Image.fromarray(X.reshape((96, 96, 3)))
+        img = Image.fromarray(X.transpose(1, 2, 0))
         img.save(in_dir / f"img{index}.png")
 
 
 def remove_preprocesed_images(in_dir, indexes):
     for index in indexes:
-        os.remove(str(in_dir / f"img{index}.png"))
+        try:
+            os.remove(str(in_dir / f"img{index}.png"))
+        except FileNotFoundError:
+            continue
 
 
 if __name__ == "__main__":
     args = parse_args()
-    dataset = get_dataloader("test", None, 32).dataset.x
+    dataset = get_dataloader(args.split_name, None, 32).dataset.x
     mode = get_mode(str(MODEL_NAME2FPATH[args.model_name]))
     tile_size, patch_size = get_tile_and_patch_size(mode)
     in_dir, out_dir = get_in_and_out_dir(args.model_name, args.split_name)
@@ -204,6 +209,8 @@ if __name__ == "__main__":
         # else args["type_info_path"],
     }
     run_args = {
+        "start_idx": args.start_idx,
+        "end_idx": args.end_idx,
         "save_every": args.save_every,
         "batch_size": args.batch_size,
         "nr_inference_workers": 0,
@@ -212,7 +219,7 @@ if __name__ == "__main__":
         "patch_output_shape": patch_size,
         "input_dir": str(in_dir),
         "output_dir": str(out_dir),
-        "mem_usage": 0.99,
+        "mem_usage": 0.85,
         "draw_dot": False,
         "save_qupath": False,
         "save_raw_map": False,

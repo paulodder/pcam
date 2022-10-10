@@ -47,7 +47,6 @@ from misc.utils import (
     rm_n_mkdir,
 )
 from misc.viz_utils import colorize, visualize_instances_dict
-from skimage import color
 from skimage.segmentation import watershed
 
 import convert_format
@@ -600,12 +599,30 @@ class InferManager(object):
         # * depend on the number of samples and their size, this may be less efficient
         print(f"self.save_every, {self.save_every}")
         patterning = lambda x: re.sub("([\[\]])", "[\\1]", x)
-        file_path_list = glob.glob(patterning("%s/*" % self.input_dir))
-        file_path_list.sort()  # ensure same order
-        file_path_list = file_path_list
+        file_path_list = glob.glob(patterning("%s/*" % self.input_dir))  #
+        # file_path_list.sort()  # ensure same order
+        file_path_list.sort(
+            reverse=True
+        )  # ensure same order        file_path_list = file_path_list
+
+        def extract_int(fpath):
+            return int(re.findall("[0-9]+", fpath)[0])
+
+        file_path_list.sort(key=extract_int, reverse=False)
+        file_path_list = [
+            x
+            for x in file_path_list
+            if (extract_int(x) >= self.start_idx)
+            and (extract_int(x) < self.end_idx)
+        ]
+        print(
+            "handling patches between",
+            min(map(extract_int, file_path_list)),
+            max(map(extract_int, file_path_list)),
+        )
         assert len(file_path_list) > 0, "Not Detected Any Files From Path"
 
-        rm_n_mkdir(self.output_dir + "/json/")
+        # rm_n_mkdir(self.output_dir + "/json/")
         Path(self.output_dir + "/mat/").mkdir(exist_ok=True, parents=True)
         # rm_n_mkdir()
         # rm_n_mkdir(self.output_dir + "/mat/")
@@ -638,6 +655,10 @@ class InferManager(object):
                 file_path = file_path_list.pop(0)
 
                 img = cv2.imread(file_path)
+                if img is None:
+                    print(file_path)
+                    return
+                    # os.remove(img)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 img = cv2.resize(
                     img, (self.patch_input_shape, self.patch_input_shape)
