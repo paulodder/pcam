@@ -60,14 +60,16 @@ def otsu_mask_imgs(imgs):
 
 if __name__ == "__main__":
     # CHANGE TO TARGET IMG IN TRAINSET
-    normalize_target_img = get_dataset("train").x[58].reshape((96, 96, 3))
+    normalize_target_img = get_dataset("train").x[58].transpose(1, 2, 0)
 
     for data_split in ["validation", "test", "train"]:
         # Load imgs
         ds = get_dataset(data_split)
         # ds.x = ds.x[:16] # For debugging
-        N, C, H, W = ds.x.shape
-        imgs = ds.x.reshape((N, H, W, C))
+        # N, C, H, W = ds.x.shape
+        # imgs = ds.x.reshape((N, H, W, C))
+
+        imgs = ds.x.transpose(0, 2, 3, 1)
 
         # Stain normalize
         print("Stain normalizing", data_split)

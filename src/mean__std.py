@@ -11,7 +11,6 @@ def calc_mean__std():
     x = h5py.File(DDIR / "camelyonpatch_level_2_split_train_x.h5", "r")["x"][
         :
     ].squeeze()
-    # x = h5py.File('camelyonpatch_level_2_split_train_x.h5', "r")["x"][:].squeeze()
     mean = np.mean(x, axis=(0, 1, 2))
     std = np.std(x, axis=(0, 1, 2))
     mean__std = (mean, std)

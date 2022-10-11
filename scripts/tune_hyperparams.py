@@ -25,6 +25,17 @@ NET_STR2INIT_FUNC = {
 }
 
 
+def reduce_plat(optimizer):
+    return {
+        "scheduler": ReduceLROnPlateau(optimizer, "min"),
+        "monitor": "val_loss",
+        "frequency": 1,
+    }
+
+
+SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat}
+
+
 class PCAMPredictor(pl.LightningModule):
     def __init__(
         self,
@@ -56,12 +67,10 @@ class PCAMPredictor(pl.LightningModule):
             lr=self.optimizer_config["lr"],
             weight_decay=self.optimizer_config["weight_decay"],
         )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": SCHED_STR2INIT_FUNC[
-                self.optimizer_config["scheduler"]
-            ](optimizer),
-        }
+        lr_scheduler = SCHED_STR2INIT_FUNC[self.optimizer_config["scheduler"]](
+            optimizer
+        )
+        return [optimizer, lr_scheduler]
 
     def training_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="train")
@@ -126,6 +135,7 @@ def evaluate_model():
         "dataset_config": {
             "batch_size": wandb.config.batch_size,
             "mask_type": None,
+            "binary_mask": False,
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
@@ -144,7 +154,11 @@ def evaluate_model():
         "max_epochs": 50,
         "ngpus": 1,
     }
-    NUM_CHANNELS = 3 if config["dataset_config"]["mask_type"] is None else 4
+    NUM_CHANNELS = (
+        3
+        + int(ds_conf["mask_type"] is not None)
+        + int(ds_conf["binary_mask"] is True)
+    )
     config["model_config"]["in_channels"] = NUM_CHANNELS
     ds_conf = config["dataset_config"]
 
