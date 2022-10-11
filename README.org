@@ -69,5 +69,13 @@ git clone https://github.com/vqdang/hover_net
 And download the file =hovernet_fast_pannuke_type_tf2pytorch.tar= from [[https://drive.google.com/drive/folders/17IBOqdImvZ7Phe0ZdC5U1vwPFJFkttWp][here]] and
 put it in =pretrained_hovernet_weights/= dir in project directory (make if it
 does not exist yet).
-
-
+* script usage
+** merge_segmentations.py
+Makes sure the per-sample saved output of segmentation network are merged into
+a tensor of size =<nof_samples> x 96 x 96=, stored under DATA_DIR /
+=<model_name>_<split_name>.pt=.
+** run_segmentation.py
+Preprocesses the data to be used by HoVerNet and runs HoVerNet. Takes
+model_name (options defined in =src.hovernet_utils.MODEL_NAME2FPATH=) and
+=split_name=. =start_idx= and =end_idx= allow you to specifically only run it
+on a subset of the data defined by the given range.

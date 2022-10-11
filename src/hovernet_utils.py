@@ -3,20 +3,12 @@ from pathlib import Path
 from decouple import config
 
 sys.path.insert(0, str(Path(config("SRC_DIR")) / "hover_net"))
-import logging
-import multiprocessing
-from multiprocessing import Lock, Pool
-from misc.utils import get_bounding_box, remove_small_objects
+from misc.utils import remove_small_objects
 from scipy.ndimage.morphology import (
-    binary_dilation,
     binary_fill_holes,
-    distance_transform_cdt,
-    distance_transform_edt,
 )
 
-multiprocessing.set_start_method(
-    "spawn", True
-)  # ! must be at top for VScode debugging
+# ! must be at top for VScode debugging
 from concurrent.futures import (
     FIRST_EXCEPTION,
     ProcessPoolExecutor,
@@ -89,12 +81,46 @@ import torch.nn.functional as F
 
 from models.hovernet.net_utils import (
     DenseBlock,
-    Net,
     ResidualBlock,
     TFSamepaddingLayer,
     UpSample2x,
 )
-from models.hovernet.utils import crop_op, crop_to_shape
+
+
+multiprocessing.set_start_method("spawn", True)
+HN_MODEL_DIR = Path(config("PROJECT_DIR")) / "pretrained_hovernet_weights"
+HN_MODEL_DIR.mkdir(exist_ok=True)
+DATA_DIR = Path(config("DATA_DIR"))
+DATA_OUT_DIR = DATA_DIR / "hovernet_results"
+
+MODEL_NAME2FPATH = {
+    "pannuke-type": HN_MODEL_DIR / "hovernet_fast_pannuke_type_tf2pytorch.tar",
+    "consep-notype": HN_MODEL_DIR
+    / "hovernet_original_consep_notype_tf2pytorch.tar",
+    "consep-type": HN_MODEL_DIR
+    / "hovernet_original_consep_type_tf2pytorch.tar",
+    "kumar-notype": HN_MODEL_DIR
+    / "hovernet_original_kumar_notype_tf2pytorch.tar",
+    "monusac-type": HN_MODEL_DIR / "hovernet_fast_monusac_type_tf2pytorch.tar",
+}
+
+
+def get_in_and_out_dir(model_name, split_name):
+    base_dir = DATA_OUT_DIR / model_name
+    base_dir.mkdir(exist_ok=True, parents=True)
+    out_dir = base_dir / "out" / split_name
+    in_dir = base_dir / "in" / split_name
+    out_dir.mkdir(exist_ok=True)
+    in_dir.mkdir(exist_ok=True)
+    return in_dir, out_dir
+
+
+def get_segmentation_path(model_name, split_name):
+    return DATA_DIR / f"{model_name}_{split_name}.pt"
+
+
+def extract_img_int(fpath):
+    return int(re.findall("[0-9]+", fpath)[0])
 
 
 def __proc_np_hv(pred):
@@ -605,20 +631,17 @@ class InferManager(object):
             reverse=True
         )  # ensure same order        file_path_list = file_path_list
 
-        def extract_int(fpath):
-            return int(re.findall("[0-9]+", fpath)[0])
-
-        file_path_list.sort(key=extract_int, reverse=False)
+        file_path_list.sort(key=extract_img_int, reverse=False)
         file_path_list = [
             x
             for x in file_path_list
-            if (extract_int(x) >= self.start_idx)
-            and (extract_int(x) < self.end_idx)
+            if (extract_img_int(x) >= self.start_idx)
+            and (extract_img_int(x) < self.end_idx)
         ]
         print(
             "handling patches between",
-            min(map(extract_int, file_path_list)),
-            max(map(extract_int, file_path_list)),
+            min(map(extract_img_int, file_path_list)),
+            max(map(extract_img_int, file_path_list)),
         )
         assert len(file_path_list) > 0, "Not Detected Any Files From Path"
 

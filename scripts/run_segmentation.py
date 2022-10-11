@@ -2,38 +2,26 @@ from argparse import ArgumentParser
 import pandas as pd
 import re
 import os
-import numpy as np
-from pathlib import Path
 from PIL import Image
-import cv2
-import sys
-from decouple import config
 from src.dataset import get_dataloader
 
-from src.hovernet_utils import InferManager
-
-HN_MODEL_DIR = Path(config("PROJECT_DIR")) / "pretrained_hovernet_weights"
-HN_MODEL_DIR.mkdir(exist_ok=True)
-
-DATA_OUT_DIR = Path(config("DATA_DIR")) / "hovernet_results"
-
-MODEL_NAME2FPATH = {
-    "pannuke-type": HN_MODEL_DIR / "hovernet_fast_pannuke_type_tf2pytorch.tar",
-    "consep-notype": HN_MODEL_DIR
-    / "hovernet_original_consep_notype_tf2pytorch.tar",
-    "consep-type": HN_MODEL_DIR
-    / "hovernet_original_consep_type_tf2pytorch.tar",
-    "kumar-notype": HN_MODEL_DIR
-    / "hovernet_original_kumar_notype_tf2pytorch.tar",
-    "monusac-type": HN_MODEL_DIR / "hovernet_fast_monusac_type_tf2pytorch.tar",
-}
+from src.hovernet_utils import (
+    InferManager,
+    get_in_and_out_dir,
+    MODEL_NAME2FPATH,
+)
 
 
 def get_parser():
     parser = ArgumentParser()
     # dataloader arguments
     parser.add_argument("--batch_size", default=10, type=int)
-    parser.add_argument("--split_name", default="test", type=str)
+    parser.add_argument(
+        "--split_name",
+        default="test",
+        type=str,
+        choices=list(MODEL_NAME2FPATH.keys()),
+    )
     # optimizer arguments
     parser.add_argument("--model_name", default="pannuke-type", type=str)
     parser.add_argument("--save_every", default=200, type=int)
@@ -72,16 +60,6 @@ def get_tile_and_patch_size(mode):
         return (256, 164)
     else:
         return (270, 80)
-
-
-def get_in_and_out_dir(model_name, split_name):
-    base_dir = DATA_OUT_DIR / model_name
-    base_dir.mkdir(exist_ok=True, parents=True)
-    out_dir = base_dir / "out" / split_name
-    in_dir = base_dir / "in" / split_name
-    out_dir.mkdir(exist_ok=True)
-    in_dir.mkdir(exist_ok=True)
-    return in_dir, out_dir
 
 
 def register_input_imgs(out_dir):
