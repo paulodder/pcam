@@ -112,9 +112,9 @@ def get_dataset(
     return ds
 
 
-def get_dataloader(split_name, mask_type, batch_size):
+def get_dataloader(split_name, mask_type, batch_size, binary_mask=False):
     shuffle = True if split_name == "train" else False
-    ds = get_dataset(split_name, mask_type)
+    ds = get_dataset(split_name, mask_type, binary_mask=binary_mask)
     dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=1)
     return dl
 
