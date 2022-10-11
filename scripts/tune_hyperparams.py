@@ -37,7 +37,7 @@ def reduce_step(optimizer, step_size):
     return torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size)
 
 
-SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat, "step": reduce_step}
+SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat, "reduce_step": reduce_step}
 
 
 class PCAMPredictor(pl.LightningModule):
