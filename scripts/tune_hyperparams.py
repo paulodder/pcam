@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 import numpy as np
 from decouple import config
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 from torch.nn import functional as F
 
 # from src.resnet import ResNet, ResBlock
@@ -33,7 +33,11 @@ def reduce_plat(optimizer):
     }
 
 
-SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat}
+def reduce_step(optimizer, step_size):
+    return torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size)
+
+
+SCHED_STR2INIT_FUNC = {"reduce_plat": reduce_plat, "step": reduce_step}
 
 
 class PCAMPredictor(pl.LightningModule):
@@ -68,7 +72,7 @@ class PCAMPredictor(pl.LightningModule):
             weight_decay=self.optimizer_config["weight_decay"],
         )
         lr_scheduler = SCHED_STR2INIT_FUNC[self.optimizer_config["scheduler"]](
-            optimizer
+            optimizer, **self.optimizer_config["scheduler_params"]
         )
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
 
@@ -77,7 +81,7 @@ class PCAMPredictor(pl.LightningModule):
         # wandb.log({"loss": loss, "acc": acc})
         return loss
 
-    def validation_step(self, batch, batch_idx, dataloader_i):
+    def validation_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="val")
         return {
             f"loss": loss,
@@ -133,14 +137,15 @@ def evaluate_model():
     wandb.init()
     run_config = {
         "dataset_config": {
-            "batch_size": wandb.config.batch_size,
+            "batch_size": 64,
             "mask_type": None,
-            "binary_mask": False,
+            "binary_mask": True,
         },
         "optimizer_config": {
-            "weight_decay": 0.0001,
+            "weight_decay": wandb.config.weight_decay,
             "lr": wandb.config.lr,
-            "scheduler": "reduce_plat",
+            "scheduler": "reduce_step",
+            "scheduler_params": {"step_size": wandb.config.sched_step_size},
         },
         "model_config": {
             "model_type": "fA_P4DenseNet",
@@ -217,7 +222,8 @@ if __name__ == "__main__":
         "name": "sweep",
         "metric": {"goal": "minimize", "name": "val_loss"},
         "parameters": {
-            "batch_size": {"values": [16, 32, 64]},
+            "sched_step_size": {"values": [5, 10, 15]},
+            "weight_decay": {"max": 0.01, "min": 0.0001},
             "lr": {"max": 0.1, "min": 0.0001},
         },
     }
@@ -228,3 +234,4 @@ if __name__ == "__main__":
     wandb.agent(sweep_id, function=evaluate_model, count=2)
 
     # evaluate_model()
+    # TODO: implement step scheduler and vary steps
