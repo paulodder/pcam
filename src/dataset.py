@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 from pathlib import Path
 from src.mean__std import get_mean__std
-
+from src import utils
 from src.constants import (
     DDIR,
     SPLIT_NAME2FNAME,
@@ -36,13 +36,12 @@ class PcamDataset(Dataset):
         self.x = x.transpose(0, 3, 1, 2)
 
         if mask_path is not None:
-            if Path(mask_path).exists():
-                with open(mask_path, "rb") as f:
-                    self.mask = pickle.load(f)
-            else:
+            mask_path = Path(mask_path)
+            if not mask_path.exists():
                 print(mask_path, "is unavailable")
                 self.mask_path = None
-
+            else:
+                self.mask = utils.load(mask_path)
         if binary_mask:
             bmask = np.zeros((96, 96))
             bmask[32:64, 32:64] = 1.0
@@ -68,7 +67,11 @@ class PcamDataset(Dataset):
 
 
 def make_mask_fpath(split_name, mask_type):
-    return DDIR / f"{mask_type}_{split_name}.pkl"
+    if mask_type in ["pannuke-type"]:
+        extension = "pt"
+    else:
+        extension = "pkl"
+    return DDIR / f"{mask_type}_{split_name}.{extension}"
 
 
 def make_prepr_fpath(split_name, preprocess):
