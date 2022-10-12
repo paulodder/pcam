@@ -231,10 +231,8 @@ def evaluate_model():
 
 if __name__ == "__main__":
     sweep_configuration = {
-        "method": "sweep",  # options: [bayes, sweep, random]
+        "method": "grid",  # options: [bayes, grid, random]
         "name": "lr_sweep",
-        "entity": "pcam",
-        "project": "pcam",
         # "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             # "sched_step_size": {"values": [5, 10, 15]},
@@ -244,10 +242,11 @@ if __name__ == "__main__":
         },
     }
 
-    sweep_id = wandb.sweep(sweep=sweep_configuration, project="pcam")
-
+    sweep_id = wandb.sweep(
+        sweep=sweep_configuration, project="pcam", entity="pcam"
+    )
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=3)
+    wandb.agent(sweep_id, function=evaluate_model, count=1)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps
