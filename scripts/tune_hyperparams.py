@@ -92,7 +92,7 @@ class PCAMPredictor(pl.LightningModule):
         if type(outputs[0]) == dict:
             outputs = [outputs]
 
-        for dataloader_name, output in zip(config["validate_on"], outputs):
+        for dataloader_name, output in zip(run_config["validate_on"], outputs):
             acc = np.mean([tmp["acc"] for tmp in output])
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
@@ -135,6 +135,7 @@ class PCAMPredictor(pl.LightningModule):
 
 def evaluate_model():
     wandb.init()
+    global run_config
     run_config = {
         "dataset_config": {
             "batch_size": 64,
@@ -147,6 +148,12 @@ def evaluate_model():
             "scheduler": "reduce_step",
             "scheduler_params": {"step_size": wandb.config.sched_step_size},
         },
+        # "optimizer_config": {
+        #     "weight_decay": 0.001,
+        #     "lr": 0.001,
+        #     "scheduler": "reduce_step",
+        #     "scheduler_params": {"step_size": 5},
+        # },
         "model_config": {
             "model_type": "fA_P4DenseNet",
             "n_channels": 9,
@@ -178,7 +185,7 @@ def evaluate_model():
 
     print(f"Optimizing parameters")
     model = PCAMPredictor(
-        run_config.get("model_config"),
+        run_config["model_config"],
         run_config["optimizer_config"],
     )
 
@@ -197,7 +204,7 @@ def evaluate_model():
     trainer = pl.Trainer(
         gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=0,
+        num_sanity_val_steps=1,
         callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
