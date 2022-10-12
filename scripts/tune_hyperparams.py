@@ -196,9 +196,10 @@ def evaluate_model():
         monitor="val_loss",
         mode="min",
         dirpath=config("MODEL_DIR"),
-        filename=f"{run_name}-lr{run_config['optimizer_config']['lr']:.3f}"
-        + f"-wd{run_config['optimizer_config']['weight_decay']:.3f}"
-        + f"-sz{run_config['optimizer_config']['scheduler_params']['step_size']}"
+        filename=f"{run_name}"
+        + f"-lr={run_config['optimizer_config']['lr']:.3f}"
+        + f"-wd={run_config['optimizer_config']['weight_decay']:.3f}"
+        + f"-sz={run_config['optimizer_config']['scheduler_params']['step_size']}"
         + "-{epoch:02d}-{val_loss:.2f}",
     )
     lr_monitor = LearningRateMonitor(logging_interval="step")
