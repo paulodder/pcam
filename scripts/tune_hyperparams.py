@@ -114,7 +114,7 @@ class PCAMPredictor(pl.LightningModule):
         }
 
     def test_epoch_end(self, outputs):
-        acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
+        acc = np.mean([tmp["acc"] for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
         # print(len(outputs), acc)
         # wandb.log({"test_acc": acc, "test_loss": loss})
