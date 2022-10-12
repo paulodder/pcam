@@ -210,7 +210,7 @@ def evaluate_model():
     trainer = pl.Trainer(
         gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=0,
+        num_sanity_val_steps=1,
         callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
