@@ -196,7 +196,10 @@ def evaluate_model():
         monitor="val_loss",
         mode="min",
         dirpath=config("MODEL_DIR"),
-        filename=f"{run_name}-bs{run_config['dataset_config']['batch_size']}-lr{run_config['optimizer_config']['lr']}"
+        filename=f"{run_name}"
+        + f"-lr={run_config['optimizer_config']['lr']:.3f}"
+        + f"-wd={run_config['optimizer_config']['weight_decay']:.3f}"
+        + f"-sz={run_config['optimizer_config']['scheduler_params']['step_size']}"
         + "-{epoch:02d}-{val_loss:.2f}",
     )
     lr_monitor = LearningRateMonitor(logging_interval="step")
@@ -204,7 +207,7 @@ def evaluate_model():
     trainer = pl.Trainer(
         gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=1,
+        num_sanity_val_steps=0,
         callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
@@ -227,7 +230,7 @@ if __name__ == "__main__":
     sweep_configuration = {
         "method": "bayes",
         "name": "sweep",
-        "metric": {"goal": "minimize", "name": "val_loss"},
+        "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             "sched_step_size": {"values": [5, 10, 15]},
             "weight_decay": {"max": 0.01, "min": 0.0001},
