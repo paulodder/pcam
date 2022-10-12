@@ -71,10 +71,11 @@ class PCAMPredictor(pl.LightningModule):
             lr=self.optimizer_config["lr"],
             weight_decay=self.optimizer_config["weight_decay"],
         )
-        lr_scheduler = SCHED_STR2INIT_FUNC[self.optimizer_config["scheduler"]](
-            optimizer, **self.optimizer_config["scheduler_params"]
-        )
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        # lr_scheduler = SCHED_STR2INIT_FUNC[self.optimizer_config["scheduler"]](
+        #     optimizer, **self.optimizer_config["scheduler_params"]
+        # )
+        # return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        return optimizer
 
     def training_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="train")
@@ -140,13 +141,14 @@ def evaluate_model():
         "dataset_config": {
             "batch_size": 64,
             "mask_type": "otsu_split",
+            "preprocess": "stain_normalize",
             "binary_mask": True,
         },
         "optimizer_config": {
-            "weight_decay": wandb.config.weight_decay,
+            "weight_decay": 0.0001,
             "lr": wandb.config.lr,
-            "scheduler": "reduce_step",
-            "scheduler_params": {"step_size": wandb.config.sched_step_size},
+            # "scheduler": "reduce_step",
+            # "scheduler_params": {"step_size": 5},
         },
         # "optimizer_config": {
         #     "weight_decay": 0.001,
@@ -155,7 +157,7 @@ def evaluate_model():
         #     "scheduler_params": {"step_size": 5},
         # },
         "model_config": {
-            "model_type": "fA_P4DenseNet",
+            "model_type": "P4DenseNet",
             "n_channels": 9,
             "dropout_p": 0.5,
             "num_blocks": 5,
@@ -163,7 +165,7 @@ def evaluate_model():
         "train_on": "train",
         "validate_on": ["validation"],
         "test_on": "test",
-        "max_epochs": 50,
+        "max_epochs": 75,
         "ngpus": 1,
     }
     ds_conf = run_config["dataset_config"]
@@ -228,20 +230,20 @@ def evaluate_model():
 
 if __name__ == "__main__":
     sweep_configuration = {
-        "method": "bayes",
-        "name": "sweep",
-        "metric": {"goal": "minimize", "name": "validation_loss"},
+        "method": "sweep",  # options: [bayes, sweep, random]
+        "name": "lr_sweep",
+        # "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
-            "sched_step_size": {"values": [5, 10, 15]},
-            "weight_decay": {"max": 0.01, "min": 0.0001},
-            "lr": {"max": 0.01, "min": 0.0001},
+            # "sched_step_size": {"values": [5, 10, 15]},
+            # "weight_decay": {"max": 0.01, "min": 0.0001},
+            "lr": {"values": [0.0001, 0.001, 0.0025, 0.005]},
         },
     }
 
     sweep_id = wandb.sweep(sweep=sweep_configuration, project="pcam")
 
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=2)
+    wandb.agent(sweep_id, function=evaluate_model, count=3)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps
