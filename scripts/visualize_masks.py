@@ -3,10 +3,10 @@ from src.dataset import get_dataset
 
 hsv_masks_combine_with_and = True
 mask_type = "otsu_split"
-
-ds = get_dataset("validation", mask_type=mask_type)
+preprocess = "stain_normalize"
+ds = get_dataset("validation", mask_type=mask_type, preprocess=preprocess)
 for x_i, mask_i in zip(ds.x, ds.mask):
-    img = cv2.cvtColor(x_i.reshape((96, 96, 3)), cv2.COLOR_RGB2BGR)
+    img = cv2.cvtColor(x_i.transpose(1, 2, 0), cv2.COLOR_RGB2BGR)
 
     img_masked = img.copy()
     for channel_i in range(3):
