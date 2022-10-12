@@ -146,12 +146,14 @@ class PCAMPredictor(pl.LightningModule):
 
 def evaluate_model():
     global wandb_config
+    global mask_comb
     # Create wandb config
     wandb_config = {
         "model_signature": None,  # Set dynamically
         "dataset_config": {
             "batch_size": 64,
-            "mask_types": ["otsu_split"],  # Sorted after
+            # "mask_types": [pannuke-type"],  # Sorted after
+            "mask_types": mask_comb,  # Sorted after
             "preprocess": "stain_normalize",
             "binary_mask": True,
         },
@@ -250,12 +252,21 @@ def evaluate_model():
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    DEBUG = False
     AVERAGE_OVER = 1 if DEBUG else 3
+    possible_mask_combs = [
+        [],
+        ["pannuke-type"],
+        ["otsu_split"],
+        ["pannuke-type", "otsu_split"],
+    ]
 
+    mask_comb = possible_mask_combs[3]
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
-        "name": "lr_sweep" + " [DEBUG]" if DEBUG else "",
+        "name": f"lr_sweep_{'-'.join(mask_comb)}" + " [DEBUG]"
+        if DEBUG
+        else "",
         "metric": {"goal": "minimize", "name": "validation_loss_min_avg"},
         "parameters": {
             "lr": {
