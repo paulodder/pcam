@@ -51,10 +51,12 @@ class PCAMPredictor(pl.LightningModule):
         self,
         model_config,
         optimizer_config,
+        run_i=0,
     ):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
+        self.run_i = run_i
 
         model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
 
@@ -106,12 +108,13 @@ class PCAMPredictor(pl.LightningModule):
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
                 {
-                    f"{dataloader_name}_acc": acc,
-                    f"{dataloader_name}_loss": loss,
+                    f"run{self.run_i}_{dataloader_name}_acc": acc,
+                    f"run{self.run_i}_{dataloader_name}_loss": loss,
                 }
             )
             if dataloader_name == "validation":
                 self.log("val_loss", loss)
+                self.val_losses.append(loss)
 
     def test_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="test")
@@ -166,7 +169,7 @@ def evaluate_model():
         "train_on": "validation" if DEBUG else "train",
         "validate_on": ["validation"],
         "test_on": "test",
-        "max_epochs": 1 if DEBUG else 75,
+        "max_epochs": 2 if DEBUG else 75,
         "ngpus": 1,
     }
     # Sort mask types
@@ -192,56 +195,68 @@ def evaluate_model():
         for split in ["test", "validation", "train"]
     }
 
-    accs = []
-    losses = []
+    min_val_losses = []
 
-    model = PCAMPredictor(
-        wandb_config["model_config"],
-        wandb_config["optimizer_config"],
-    )
+    for i in range(AVERAGE_OVER):
+        model = PCAMPredictor(
+            wandb_config["model_config"],
+            wandb_config["optimizer_config"],
+            run_i=i,
+        )
 
-    wandb_config["model_signature"] = str(model).split("\n")
+        wandb_config["model_signature"] = str(model).split("\n")
 
-    # Initialize wandb
-    wandb.init(config=wandb_config)
+        if i == 0:
+            # Initialize wandb
+            wandb.init(config=wandb_config)
 
-    # Set learning rate according to sweep parameters.
-    wandb_config["optimizer_config"]["lr"] = wandb.config.lr
-    model.optimizer_config["lr"] = wandb_config["optimizer_config"]["lr"]
-    run_name = wandb.run.name
+            # Set learning rate according to sweep parameters.
+            wandb_config["optimizer_config"]["lr"] = wandb.config.lr
+            model.optimizer_config["lr"] = wandb_config["optimizer_config"][
+                "lr"
+            ]
+            run_name = wandb.run.name
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        mode="min",
-        dirpath=config("MODEL_DIR"),
-        filename=f"{run_name}"
-        + f"-lr={wandb_config['optimizer_config']['lr']:.3f}"
-        + "-{epoch:02d}-{val_loss:.2f}",
-    )
-    lr_monitor = LearningRateMonitor(logging_interval="step")
+        checkpoint_callback = ModelCheckpoint(
+            monitor="val_loss",
+            mode="min",
+            dirpath=config("MODEL_DIR"),
+            filename=f"{run_name}"
+            + f"-lr={wandb_config['optimizer_config']['lr']:.3f}"
+            + "-{epoch:02d}-{val_loss:.2f}",
+        )
+        lr_monitor = LearningRateMonitor(logging_interval="step")
 
-    trainer = pl.Trainer(
-        gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
-        max_epochs=wandb_config["max_epochs"],
-        num_sanity_val_steps=1 if DEBUG else 0,
-        callbacks=[checkpoint_callback, lr_monitor],
-    )
-    trainer.fit(
-        model,
-        train_dataloaders=split2loader[wandb_config.get("train_on")],
-        val_dataloaders=[
-            split2loader[x] for x in wandb_config.get("validate_on")
-        ],
+        trainer = pl.Trainer(
+            gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
+            max_epochs=wandb_config["max_epochs"],
+            num_sanity_val_steps=1 if DEBUG else 0,
+            callbacks=[checkpoint_callback, lr_monitor],
+        )
+        trainer.fit(
+            model,
+            train_dataloaders=split2loader[wandb_config.get("train_on")],
+            val_dataloaders=[
+                split2loader[x] for x in wandb_config.get("validate_on")
+            ],
+        )
+        min_val_losses.append(min(model.val_losses))
+
+    wandb.log(
+        {
+            f"validation_loss_min_avg": np.mean(min_val_losses),
+        }
     )
 
 
 if __name__ == "__main__":
     DEBUG = True
+    AVERAGE_OVER = 1 if DEBUG else 3
 
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
-        "name": "lr_sweep",
-        "metric": {"goal": "minimize", "name": "validation_loss"},
+        "name": "lr_sweep" + "_DEBUG" if DEBUG else "",
+        "metric": {"goal": "minimize", "name": "validation_loss_min_avg"},
         "parameters": {
             "lr": {
                 "values": [0.0001, 0.001]
