@@ -260,19 +260,17 @@ if __name__ == "__main__":
         ["otsu_split"],
         ["pannuke-type", "otsu_split"],
     ]
-
-    mask_comb = possible_mask_combs[3]
+    mask_comb = possible_mask_combs[1]
+    sweep_name = f"lr_sweep_{'-'.join(mask_comb)}" + (
+        " [DEBUG]" if DEBUG else ""
+    )
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
-        "name": f"lr_sweep_{'-'.join(mask_comb)}" + " [DEBUG]"
-        if DEBUG
-        else "",
+        "name": sweep_name,
         "metric": {"goal": "minimize", "name": "validation_loss_min_avg"},
         "parameters": {
             "lr": {
-                "values": [0.0001, 0.001]
-                if DEBUG
-                else [0.0001, 0.001, 0.0025, 0.005]
+                "values": [0.0001] if DEBUG else [0.0001, 0.001, 0.0025, 0.005]
             },
         },
     }
