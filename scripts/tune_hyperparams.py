@@ -140,8 +140,10 @@ def evaluate_model():
     run_config = {
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": "otsu_split",
-            "preprocess": "stain_normalize",
+            # "mask_type": "otsu_split",
+            "mask_type": None,
+            # "preprocess": "stain_normalize",
+            "preprocess": None,
             "binary_mask": True,
         },
         "optimizer_config": {
@@ -165,7 +167,8 @@ def evaluate_model():
         "train_on": "train",
         "validate_on": ["validation"],
         "test_on": "test",
-        "max_epochs": 75,
+        # "max_epochs": 75,
+        "max_epochs": 2,
         "ngpus": 1,
     }
     ds_conf = run_config["dataset_config"]
@@ -200,8 +203,6 @@ def evaluate_model():
         dirpath=config("MODEL_DIR"),
         filename=f"{run_name}"
         + f"-lr={run_config['optimizer_config']['lr']:.3f}"
-        + f"-wd={run_config['optimizer_config']['weight_decay']:.3f}"
-        + f"-sz={run_config['optimizer_config']['scheduler_params']['step_size']}"
         + "-{epoch:02d}-{val_loss:.2f}",
     )
     lr_monitor = LearningRateMonitor(logging_interval="step")
@@ -232,11 +233,14 @@ if __name__ == "__main__":
     sweep_configuration = {
         "method": "sweep",  # options: [bayes, sweep, random]
         "name": "lr_sweep",
+        "entity": "pcam",
+        "project": "pcam",
         # "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             # "sched_step_size": {"values": [5, 10, 15]},
             # "weight_decay": {"max": 0.01, "min": 0.0001},
-            "lr": {"values": [0.0001, 0.001, 0.0025, 0.005]},
+            # "lr": {"values": [0.0001, 0.001, 0.0025, 0.005]}, # Uncomment for final run
+            "lr": {"values": [0.0001, 0.001]},
         },
     }
 
