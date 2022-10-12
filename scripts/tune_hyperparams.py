@@ -144,7 +144,6 @@ class PCAMPredictor(pl.LightningModule):
 def evaluate_model():
     wandb.init(config=wandb_config)
     wandb_config["optimizer_config"]["lr"] = wandb.config.lr
-    ds_conf = wandb_config["dataset_config"]
 
     # get dataloaders
     split2loader = {
@@ -222,6 +221,7 @@ if __name__ == "__main__":
         wandb_config["model_config"]["model_type"]
     ]
 
+    ds_conf = wandb_config["dataset_config"]
     NUM_CHANNELS = (
         3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
     )
