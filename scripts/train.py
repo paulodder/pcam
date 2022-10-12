@@ -176,7 +176,7 @@ if __name__ == "__main__":
             # "model_type": "P4DenseNet",
             # "n_channels": 13,
             "model_type": "fA_P4DenseNet",
-            "n_channels": 9,
+            "n_channels": 13,
             "dropout_p": 0.5,
             "num_blocks": 5,
         },
@@ -190,6 +190,7 @@ if __name__ == "__main__":
     NUM_CHANNELS = (
         3 if wandb_config["dataset_config"]["mask_type"] is None else 4
     )
+    print(f"NUM CHANNELS {NUM_CHANNELS}")
     wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
 
     ds_conf = wandb_config["dataset_config"]
