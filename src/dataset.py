@@ -6,7 +6,7 @@ import pandas as pd
 import pickle
 import numpy as np
 from pathlib import Path
-from src.mean__std import get_mean__std
+from src.mean__std import get_mean__std, get_mean__std_otsu
 from src import utils
 from src.constants import (
     DDIR,
@@ -33,22 +33,30 @@ class PcamDataset(Dataset):
         else:
             print("x_path filetype not supported")
 
+        self.mask_path2data = self.get_mask_path2mask(self.mask_paths)
         self.x = x.transpose(0, 3, 1, 2)
-        self.mask_path2data = {}
-        for mask_path in mask_paths:
-            mask_path = Path(mask_path)
-            if not mask_path.exists():
-                print(mask_path, "is unavailable")
-            else:
-                self.mask_path2data[mask_path] = utils.load(mask_path)
         if binary_mask:
-            bmask = np.zeros((96, 96))
+            bmask = np.ones((96, 96)) * -1.0
             bmask[32:64, 32:64] = 1.0
             self.binary_mask = (bmask - bmask.mean()) / bmask.std()
         else:
             self.binary_mask = None
         self.y = h5py.File(y_path, "r")["y"][:].squeeze()
         self.meta = pd.read_csv(meta_path)
+
+    def get_mask_path2mask(mask_paths):
+        mask_path2data = {}
+        for mask_path in mask_paths:
+            mask_path = Path(mask_path)
+            if "otsu_split" in mask_path.name:
+                mean, std = get_mean__std_otsu()
+            if not mask_path.exists():
+                print(mask_path, "is unavailable")
+            else:
+                mask = utils.load(mask_path)
+                mask_norm = (mask - mean) / std
+                mask_path2data[mask_path] = mask_norm
+        return mask_path2data
 
     def __len__(self):
         return self.x.shape[0]
@@ -131,5 +139,4 @@ def get_dataloader(
 
 
 if __name__ == "__main__":
-    dl = get_dataloader("train", None, 10000)
-    breakpoint()
+    dl = get_dataset("validation", [], preprocess="stain_normalize")

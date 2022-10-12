@@ -27,3 +27,25 @@ def get_mean__std():
         with open(path, "wb") as f:
             pkl.dump(mean__std, f)
     return mean__std
+
+
+def calc_mean__std_otsu():
+    print("Calculating mean__std for otsu_mask")
+    with open(DDIR / "otsu_split_train.pkl", "rb") as f:
+        x = pkl.load(f)
+    mean = np.mean(x)
+    std = np.std(x)
+    mean__std = (mean, std)
+    return mean__std
+
+
+def get_mean__std_otsu():
+    path = Path(DDIR / "mean__std_otsu_split.pkl")
+    if path.exists():
+        with open(path, "rb") as f:
+            mean__std = pkl.load(f)
+    else:
+        mean__std = calc_mean__std_otsu()
+        with open(path, "wb") as f:
+            pkl.dump(mean__std, f)
+    return mean__std

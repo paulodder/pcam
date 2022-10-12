@@ -142,10 +142,49 @@ class PCAMPredictor(pl.LightningModule):
 
 
 def evaluate_model():
-    wandb.init(config=wandb_config)
-    wandb_config["optimizer_config"]["lr"] = wandb.config.lr
+    # Create wandb config
+    wandb_config = {
+        "dataset_config": {
+            "batch_size": 64,
+            "mask_types": [] if DEBUG else ["otsu_split"],
+            "preprocess": None if DEBUG else "stain_normalize",
+            "binary_mask": True,
+        },
+        "optimizer_config": {
+            "weight_decay": 0.0001,
+            # "scheduler": "reduce_step",
+            # "scheduler_params": {"step_size": 5},
+        },
+        "model_config": {
+            "model_type": "P4DenseNet",
+            "n_channels": 9,
+            "dropout_p": 0.5,
+            "num_blocks": 5,
+        },
+        "train_on": "validation" if DEBUG else "train",
+        "validate_on": ["validation"],
+        "test_on": "test",
+        "max_epochs": 1 if DEBUG else 75,
+        "ngpus": 1,
+    }
+    # Sort mask types
+    wandb_config["dataset_config"]["mask_types"] = sorted(
+        wandb_config["dataset_config"]["mask_types"]
+    )
 
-    # get dataloaders
+    # Set number of channels for model
+    wandb_config["model_config"]["n_channels"] = MODEL_NAME2NUM_CHANNELS[
+        wandb_config["model_config"]["model_type"]
+    ]
+
+    # Get number of input channels
+    ds_conf = wandb_config["dataset_config"]
+    NUM_IN_CHANNELS = (
+        3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
+    )
+    wandb_config["model_config"]["in_channels"] = NUM_IN_CHANNELS
+
+    # Get dataloaders
     split2loader = {
         split: get_dataloader(split, **ds_conf)
         for split in ["test", "validation", "train"]
@@ -160,6 +199,13 @@ def evaluate_model():
     )
 
     wandb_config["model_signature"] = str(model).split("\n")
+
+    # Initialize wandb
+    wandb.init(config=wandb_config)
+
+    # Set learning rate according to sweep parameters.
+    wandb_config["optimizer_config"]["lr"] = wandb.config.lr
+    model.optimizer_config["lr"] = wandb_config["optimizer_config"]["lr"]
     run_name = wandb.run.name
 
     checkpoint_callback = ModelCheckpoint(
@@ -190,43 +236,6 @@ def evaluate_model():
 if __name__ == "__main__":
     DEBUG = True
 
-    wandb_config = {
-        "dataset_config": {
-            "batch_size": 64,
-            "mask_types": [] if DEBUG else ["otsu_split"],
-            "preprocess": None if DEBUG else "stain_normalize",
-            "binary_mask": True,
-        },
-        "optimizer_config": {
-            "weight_decay": 0.0001,
-            # "scheduler": "reduce_step",
-            # "scheduler_params": {"step_size": 5},
-        },
-        "model_config": {
-            "model_type": "P4DenseNet",
-            "n_channels": 9,
-            "dropout_p": 0.5,
-            "num_blocks": 5,
-        },
-        "train_on": "validation" if DEBUG else "train",
-        "validate_on": ["validation"],
-        "test_on": "test",
-        "max_epochs": 2 if DEBUG else 75,
-        "ngpus": 1,
-    }
-    wandb_config["dataset_config"]["mask_types"] = sorted(
-        wandb_config["dataset_config"]["mask_types"]
-    )
-    wandb_config["model_config"]["n_channels"] = MODEL_NAME2NUM_CHANNELS[
-        wandb_config["model_config"]["model_type"]
-    ]
-
-    ds_conf = wandb_config["dataset_config"]
-    NUM_CHANNELS = (
-        3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
-    )
-    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
-
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
         "name": "lr_sweep",
@@ -244,7 +253,8 @@ if __name__ == "__main__":
         sweep=sweep_configuration, project="pcam", entity="pcam"
     )
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=2 if DEBUG else 3)
+    n_sweeps = len(sweep_configuration["parameters"]["lr"])
+    wandb.agent(sweep_id, function=evaluate_model, count=n_sweeps)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps
