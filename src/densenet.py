@@ -1142,7 +1142,7 @@ class fA_P4MDenseNet(nn.Module):
         # Reduce to 2 channels (IMPORTANT! THIS IS DIFFERENT TO VEELING ET. AL. (2018), They use only one output channel with sigmoid)
         self.c_out = e2_layers.fAttConvGG(
             N_in=n_channels,
-            N_out=1,
+            N_out=2,
             kernel_size=1,
             h_grid=self.h_grid,
             input_h_grid=self.h_grid,
