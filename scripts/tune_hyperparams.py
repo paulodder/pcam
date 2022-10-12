@@ -142,6 +142,7 @@ class PCAMPredictor(pl.LightningModule):
 
 
 def evaluate_model():
+    global wandb_config
     # Create wandb config
     wandb_config = {
         "model_signature": None,  # Set dynamically
