@@ -175,7 +175,7 @@ if __name__ == "__main__":
         "model_config": {
             # "model_type": "P4DenseNet",
             # "n_channels": 13,
-            "model_type": "P4DenseNet",
+            "model_type": "fA_P4DenseNet",
             "n_channels": 13,
             "dropout_p": 0.5,
             "num_blocks": 5,
