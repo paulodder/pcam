@@ -6,7 +6,7 @@ import pandas as pd
 import pickle
 import numpy as np
 from pathlib import Path
-from src.mean__std import get_mean__std, get_mean__std_otsu
+from src.mean__std import get_mean__std, mask_slug2mean__std_func
 from src import utils
 from src.constants import (
     DDIR,
@@ -44,12 +44,12 @@ class PcamDataset(Dataset):
         self.y = h5py.File(y_path, "r")["y"][:].squeeze()
         self.meta = pd.read_csv(meta_path)
 
-    def get_mask_path2mask(mask_paths):
+    def get_mask_path2mask(self, mask_paths):
         mask_path2data = {}
         for mask_path in mask_paths:
             mask_path = Path(mask_path)
-            if "otsu_split" in mask_path.name:
-                mean, std = get_mean__std_otsu()
+            mask_slug = utils.get_mask_slug(mask_path)
+            mean, std = mask_slug2mean__std_func[mask_slug]()
             if not mask_path.exists():
                 print(mask_path, "is unavailable")
             else:
@@ -139,4 +139,12 @@ def get_dataloader(
 
 
 if __name__ == "__main__":
-    dl = get_dataset("validation", [], preprocess="stain_normalize")
+    dl = get_dataloader(
+        "train", ["otsu_split", "pannuke-type"], 64, preprocess=None
+    )
+    means = []
+    for i, (x, y) in enumerate(dl):
+        if i > 300:
+            break
+        means.append(x.mean((0, 2, 3)))
+    print(np.stack(means).mean((0)))
