@@ -233,7 +233,7 @@ if __name__ == "__main__":
         "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             "lr": {
-                "values": [0.0001, 0.001, 0.0025]
+                "values": [0.0001, 0.001]
                 if DEBUG
                 else [0.0001, 0.001, 0.0025, 0.005]
             },
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         sweep=sweep_configuration, project="pcam", entity="pcam"
     )
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=1 if DEBUG else 3)
+    wandb.agent(sweep_id, function=evaluate_model, count=2 if DEBUG else 3)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps
