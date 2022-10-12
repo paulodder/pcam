@@ -140,10 +140,8 @@ def evaluate_model():
     run_config = {
         "dataset_config": {
             "batch_size": 64,
-            # "mask_type": "otsu_split",
-            "mask_type": None,
-            # "preprocess": "stain_normalize",
-            "preprocess": None,
+            "mask_type": None if DEBUG else "otsu_split",
+            "preprocess": None if DEBUG else "stain_normalize",
             "binary_mask": True,
         },
         "optimizer_config": {
@@ -152,12 +150,6 @@ def evaluate_model():
             # "scheduler": "reduce_step",
             # "scheduler_params": {"step_size": 5},
         },
-        # "optimizer_config": {
-        #     "weight_decay": 0.001,
-        #     "lr": 0.001,
-        #     "scheduler": "reduce_step",
-        #     "scheduler_params": {"step_size": 5},
-        # },
         "model_config": {
             "model_type": "P4DenseNet",
             "n_channels": 9,
@@ -167,8 +159,7 @@ def evaluate_model():
         "train_on": "train",
         "validate_on": ["validation"],
         "test_on": "test",
-        # "max_epochs": 75,
-        "max_epochs": 2,
+        "max_epochs": 2 if DEBUG else 75,
         "ngpus": 1,
     }
     ds_conf = run_config["dataset_config"]
@@ -210,7 +201,7 @@ def evaluate_model():
     trainer = pl.Trainer(
         gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=1,
+        num_sanity_val_steps=1 if DEBUG else 0,
         callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
@@ -220,25 +211,20 @@ def evaluate_model():
             split2loader[x] for x in run_config.get("validate_on")
         ],
     )
-    # Test on test set with model for lowest validation accuracy
-    # test_result = trainer.test(
-    #     ckpt_path="best",
-    #     dataloaders=split2loader[run_config.get("test_on")],
-    #     verbose=False,
-    # )
-    # print(trainer.callback_metrics)
 
 
 if __name__ == "__main__":
+    DEBUG = True
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
         "name": "lr_sweep",
-        # "metric": {"goal": "minimize", "name": "validation_loss"},
+        "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
-            # "sched_step_size": {"values": [5, 10, 15]},
-            # "weight_decay": {"max": 0.01, "min": 0.0001},
-            # "lr": {"values": [0.0001, 0.001, 0.0025, 0.005]}, # Uncomment for final run
-            "lr": {"values": [0.0001, 0.001]},
+            "lr": {
+                "values": [0.0001, 0.001]
+                if DEBUG
+                else [0.0001, 0.001, 0.0025, 0.005]
+            },
         },
     }
 
@@ -246,7 +232,7 @@ if __name__ == "__main__":
         sweep=sweep_configuration, project="pcam", entity="pcam"
     )
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=1)
+    wandb.agent(sweep_id, function=evaluate_model, count=1 if DEBUG else 3)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps
