@@ -145,12 +145,6 @@ def evaluate_model():
     wandb.init(config=wandb_config)
     wandb_config["optimizer_config"]["lr"] = wandb.config.lr
     ds_conf = wandb_config["dataset_config"]
-    NUM_CHANNELS = (
-        3
-        + int(ds_conf["mask_type"] is not None)
-        + int(ds_conf["binary_mask"] is True)
-    )
-    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
 
     # get dataloaders
     split2loader = {
@@ -200,7 +194,7 @@ if __name__ == "__main__":
     wandb_config = {
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": None if DEBUG else "otsu_split",
+            "mask_types": [] if DEBUG else ["otsu_split"],
             "preprocess": None if DEBUG else "stain_normalize",
             "binary_mask": True,
         },
@@ -221,9 +215,17 @@ if __name__ == "__main__":
         "max_epochs": 2 if DEBUG else 75,
         "ngpus": 1,
     }
+    wandb_config["dataset_config"]["mask_types"] = sorted(
+        wandb_config["dataset_config"]["mask_types"]
+    )
     wandb_config["model_config"]["n_channels"] = MODEL_NAME2NUM_CHANNELS[
         wandb_config["model_config"]["model_type"]
     ]
+
+    NUM_CHANNELS = (
+        3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
+    )
+    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
 
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
@@ -231,7 +233,7 @@ if __name__ == "__main__":
         "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             "lr": {
-                "values": [0.0001, 0.001]
+                "values": [0.0001, 0.001, 0.0025]
                 if DEBUG
                 else [0.0001, 0.001, 0.0025, 0.005]
             },
