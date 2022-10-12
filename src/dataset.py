@@ -44,7 +44,7 @@ class PcamDataset(Dataset):
         self.y = h5py.File(y_path, "r")["y"][:].squeeze()
         self.meta = pd.read_csv(meta_path)
 
-    def get_mask_path2mask(mask_paths):
+    def get_mask_path2mask(self, mask_paths):
         mask_path2data = {}
         for mask_path in mask_paths:
             mask_path = Path(mask_path)
