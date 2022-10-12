@@ -165,7 +165,7 @@ if __name__ == "__main__":
     wandb_config = {
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": None,
+            "mask_type": "pannuke-type",
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
