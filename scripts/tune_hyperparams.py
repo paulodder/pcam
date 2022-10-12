@@ -144,20 +144,21 @@ class PCAMPredictor(pl.LightningModule):
 def evaluate_model():
     # Create wandb config
     wandb_config = {
+        "model_signature": None,  # Set dynamically
         "dataset_config": {
             "batch_size": 64,
-            "mask_types": [] if DEBUG else ["otsu_split"],
-            "preprocess": None if DEBUG else "stain_normalize",
+            "mask_types": ["otsu_split"],  # Sorted after
+            "preprocess": "stain_normalize",
             "binary_mask": True,
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
-            # "scheduler": "reduce_step",
-            # "scheduler_params": {"step_size": 5},
+            "lr": None,  # Set dynamically
         },
         "model_config": {
             "model_type": "P4DenseNet",
-            "n_channels": 9,
+            "n_channels": None,  # Set dynamically
+            "in_channels": None,  # Set dynamically
             "dropout_p": 0.5,
             "num_blocks": 5,
         },
