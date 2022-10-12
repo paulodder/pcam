@@ -204,7 +204,7 @@ def evaluate_model():
     trainer = pl.Trainer(
         gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=1,
+        num_sanity_val_steps=0,
         callbacks=[checkpoint_callback, lr_monitor],
     )
     trainer.fit(
@@ -227,7 +227,7 @@ if __name__ == "__main__":
     sweep_configuration = {
         "method": "bayes",
         "name": "sweep",
-        "metric": {"goal": "minimize", "name": "val_loss"},
+        "metric": {"goal": "minimize", "name": "validation_loss"},
         "parameters": {
             "sched_step_size": {"values": [5, 10, 15]},
             "weight_decay": {"max": 0.01, "min": 0.0001},
