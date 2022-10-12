@@ -139,7 +139,7 @@ def evaluate_model():
     run_config = {
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": None,
+            "mask_type": "otsu_split",
             "binary_mask": True,
         },
         "optimizer_config": {
@@ -234,7 +234,7 @@ if __name__ == "__main__":
         "parameters": {
             "sched_step_size": {"values": [5, 10, 15]},
             "weight_decay": {"max": 0.01, "min": 0.0001},
-            "lr": {"max": 0.1, "min": 0.0001},
+            "lr": {"max": 0.01, "min": 0.0001},
         },
     }
 
