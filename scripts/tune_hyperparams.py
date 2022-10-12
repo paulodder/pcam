@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
-        "name": "lr_sweep" + "_DEBUG" if DEBUG else "",
+        "name": "lr_sweep" + " [DEBUG]" if DEBUG else "",
         "metric": {"goal": "minimize", "name": "validation_loss_min_avg"},
         "parameters": {
             "lr": {
