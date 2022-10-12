@@ -18,12 +18,12 @@ from src.constants import (
 
 class PcamDataset(Dataset):
     def __init__(
-        self, x_path, y_path, meta_path, mask_path, binary_mask=False
+        self, x_path, y_path, meta_path, mask_paths, binary_mask=False
     ):
         mean__std = get_mean__std()
         self.mean = mean__std[0][:, None][:, None]
         self.std = mean__std[1][:, None][:, None]
-        self.mask_path = mask_path
+        self.mask_paths = mask_paths
 
         if x_path.suffix == ".h5":
             x = h5py.File(x_path, "r")["x"][:].squeeze()
@@ -34,14 +34,13 @@ class PcamDataset(Dataset):
             print("x_path filetype not supported")
 
         self.x = x.transpose(0, 3, 1, 2)
-
-        if mask_path is not None:
+        self.mask_path2data = {}
+        for mask_path in mask_paths:
             mask_path = Path(mask_path)
             if not mask_path.exists():
                 print(mask_path, "is unavailable")
-                self.mask_path = None
             else:
-                self.mask = utils.load(mask_path)
+                self.mask_path2data[mask_path] = utils.load(mask_path)
         if binary_mask:
             bmask = np.zeros((96, 96))
             bmask[32:64, 32:64] = 1.0
@@ -56,8 +55,16 @@ class PcamDataset(Dataset):
 
     def __getitem__(self, idx):
         x = (self.x[idx] - self.mean) / self.std
-        if self.mask_path is not None:
-            x = np.concatenate((x, self.mask[idx][None, :]))
+
+        x = np.concatenate(
+            (
+                x,
+                *(
+                    self.mask_path2data[mask_path][idx][None, :]
+                    for mask_path in self.mask_paths
+                ),
+            )
+        )
         if self.binary_mask is not None:
             x = np.concatenate((x, self.binary_mask[None, :]))
 
@@ -78,9 +85,7 @@ def make_prepr_fpath(split_name, preprocess):
     return DDIR / f"{preprocess}_{split_name}_x.pkl"
 
 
-def get_dataset(
-    split_name, mask_type=None, preprocess=None, binary_mask=False
-):
+def get_dataset(split_name, mask_types=[], preprocess=None, binary_mask=False):
     """
     Create a PcamDataset instance
 
@@ -101,23 +106,26 @@ def get_dataset(
     if preprocess in ACCEPTED_PREPROCESS:
         fpath_x = make_prepr_fpath(split_name, preprocess)
 
-    if mask_type is None:
-        fpath_mask = None
-    elif mask_type in ACCEPTED_MASKS:
-        fpath_mask = make_mask_fpath(split_name, mask_type)
-    elif mask_type is not None:
-        print(f"mask type {mask_type} is not accepted")
-        return
+    if len(mask_types) == 0:
+        mask_fpaths = []
+    elif all(mask_type in ACCEPTED_MASKS for mask_type in mask_types):
+        mask_fpaths = [
+            make_mask_fpath(split_name, mask_type) for mask_type in mask_types
+        ]
     else:
-        fpath_mask = None
+        raise ValueError("Invalid mask types!")
 
-    ds = PcamDataset(fpath_x, fpath_y, fpath_meta, fpath_mask, binary_mask)
+    ds = PcamDataset(fpath_x, fpath_y, fpath_meta, mask_fpaths, binary_mask)
     return ds
 
 
-def get_dataloader(split_name, mask_type, batch_size, binary_mask=False):
+def get_dataloader(
+    split_name, mask_types, batch_size, preprocess, binary_mask=False
+):
     shuffle = True if split_name == "train" else False
-    ds = get_dataset(split_name, mask_type, binary_mask=binary_mask)
+    ds = get_dataset(
+        split_name, mask_types, preprocess, binary_mask=binary_mask
+    )
     dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, num_workers=1)
     return dl
 
