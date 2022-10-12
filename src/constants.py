@@ -22,6 +22,6 @@ SPLIT_NAME2FNAME = {
     ),
 }
 
-ACCEPTED_MASKS = ["otsu", "otsu_split"]
+ACCEPTED_MASKS = ["otsu", "otsu_split", "pannuke-type"]
 
 ACCEPTED_PREPROCESS = ["stain_normalize"]
