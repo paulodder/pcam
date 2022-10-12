@@ -270,7 +270,7 @@ if __name__ == "__main__":
         sweep=sweep_configuration, project="pcam", entity="pcam"
     )
     # Start sweep job.
-    n_sweeps = len(sweep_configuration["parameters"]["lr"])
+    n_sweeps = len(sweep_configuration["parameters"]["lr"]["values"])
     wandb.agent(sweep_id, function=evaluate_model, count=n_sweeps)
 
     # evaluate_model()
