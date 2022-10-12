@@ -208,7 +208,7 @@ if __name__ == "__main__":
             "dropout_p": 0.5,
             "num_blocks": 5,
         },
-        "train_on": "train",
+        "train_on": "validation" if DEBUG else "train",
         "validate_on": ["validation"],
         "test_on": "test",
         "max_epochs": 2 if DEBUG else 75,
