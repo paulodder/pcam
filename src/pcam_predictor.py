@@ -41,7 +41,6 @@ class PCAMPredictor(pl.LightningModule):
         self.loss_module = nn.BCEWithLogitsLoss()
         self.val_losses = []
         self.auroc = {
-            "train": AUROC(num_classes=2, pos_label=1),
             "val": AUROC(num_classes=2, pos_label=1),
             "test": AUROC(num_classes=2, pos_label=1),
         }
@@ -60,16 +59,17 @@ class PCAMPredictor(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_idx):
-        loss, acc, auc = self.forward(batch, mode="train")
-        wandb.log({"acc": acc, "auc": auc, "loss": loss})
+        loss, acc, preds, targets = self.forward(batch, mode="train")
+        wandb.log({"acc": acc, "loss": loss})
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc, auc = self.forward(batch, mode="val")
+        loss, acc, preds, targets = self.forward(batch, mode="val")
         return {
-            f"loss": loss,
-            f"acc": acc,
-            f"auc": auc,
+            "loss": loss,
+            "acc": acc,
+            "preds": preds,
+            "targets": targets,
         }
 
     def validation_epoch_end(self, outputs):
@@ -80,7 +80,9 @@ class PCAMPredictor(pl.LightningModule):
             self.config["validate_on"], outputs
         ):
             acc = np.mean([tmp["acc"] for tmp in output])
-            auc = np.mean([tmp["auc"] for tmp in output])
+            preds = torch.cat([tmp["preds"] for tmp in output], 0)
+            targets = torch.cat([tmp["targets"] for tmp in output], 0)
+            auc = self.auroc["val"](preds, targets)
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
                 {
@@ -94,17 +96,20 @@ class PCAMPredictor(pl.LightningModule):
                 self.val_losses.append(loss)
 
     def test_step(self, batch, batch_idx):
-        loss, acc, auc = self.forward(batch, mode="test")
+        loss, acc, preds, targets = self.forward(batch, mode="test")
 
         return {
             "loss": loss,
             "acc": acc,
-            "auc": auc,
+            "preds": preds,
+            "targets": targets,
         }
 
     def test_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"] for tmp in outputs])
-        auc = np.mean([tmp["auc"] for tmp in outputs])
+        preds = torch.cat([tmp["preds"] for tmp in output], 0)
+        targets = torch.cat([tmp["targets"] for tmp in output], 0)
+        auc = self.auroc["test"](preds, targets)
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
         wandb.log({"test_acc": acc, "test_auc": auc, "test_loss": loss})
         self.log("test_acc", acc)
@@ -116,6 +121,5 @@ class PCAMPredictor(pl.LightningModule):
         loss = self.loss_module(y_pred_proba, y)
         y_pred_proba = y_pred_proba.cpu().detach()
         y = y.cpu().detach().int()
-        auc = self.auroc[mode](y_pred_proba, y)
         acc = self.acc[mode](y_pred_proba, y)
-        return loss, acc, auc
+        return loss, acc, y_pred_proba, y
