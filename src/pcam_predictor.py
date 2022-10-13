@@ -19,14 +19,11 @@ NET_STR2INIT_FUNC = {
 
 
 class PCAMPredictor(pl.LightningModule):
-    def __init__(
-        self,
-        model_config,
-        optimizer_config,
-    ):
+    def __init__(self, config):
         super().__init__()
-        self.model_config = model_config
-        self.optimizer_config = optimizer_config
+        self.config = config
+        self.model_config = config["model_config"]
+        self.optimizer_config = config["optimizer_config"]
 
         model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
 
@@ -79,7 +76,7 @@ class PCAMPredictor(pl.LightningModule):
             outputs = [outputs]
 
         for dataloader_name, output in zip(
-            wandb_config["validate_on"], outputs
+            self.config["validate_on"], outputs
         ):
             acc = np.mean([tmp["acc"] for tmp in output])
             auc = np.mean([tmp["auc"] for tmp in output])
