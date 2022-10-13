@@ -85,7 +85,7 @@ class PCAMPredictor(pl.LightningModule):
             wandb.log(
                 {
                     f"{dataloader_name}_acc": acc,
-                    f"{dataloader_name}_auc": acc,
+                    f"{dataloader_name}_auc": auc,
                     f"{dataloader_name}_loss": loss,
                 }
             )
