@@ -107,8 +107,8 @@ class PCAMPredictor(pl.LightningModule):
 
     def test_epoch_end(self, outputs):
         acc = np.mean([tmp["acc"] for tmp in outputs])
-        preds = torch.cat([tmp["preds"] for tmp in output], 0)
-        targets = torch.cat([tmp["targets"] for tmp in output], 0)
+        preds = torch.cat([tmp["preds"] for tmp in outputs], 0)
+        targets = torch.cat([tmp["targets"] for tmp in outputs], 0)
         auc = self.auroc["test"](preds, targets)
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
         wandb.log({"test_acc": acc, "test_auc": auc, "test_loss": loss})
