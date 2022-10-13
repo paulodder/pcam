@@ -45,6 +45,6 @@ if __name__ == "__main__":
     args = parse_args()
     exp_manager = ExperimentManager(args.experiment_name)
     necessary_run_configs = exp_manager.get_necessary_runs()
-    for run_config in necessary_run_configs:
+    while necessary_run_configs := exp_manager.get_necessary_runs():
         # TODO @pim insert your func here
-        print(f"would be running for {run_config}")
+        print(f"would be running for {necessary_run_configs[0]}")

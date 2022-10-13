@@ -72,8 +72,10 @@ class ExperimentManager:
         for _, row in regdf.iterrows():
             regdf.iloc[0].needed_param2val
             if row.runs_to_do > 0:
+                conf = get_config(self.experiment_name, row.needed_param2val)
+                print(f"{row.runs_to_do} repeats to do of {conf}")
                 necessary_runs.append(
-                    get_config(self.experiment_name, row.needed_param2val)
+                    conf
                 )  # you only need to append this one once, cause it'll
                 # re-decide what to run upon each new run it starts, no need
                 # to keep track of cardinality.
