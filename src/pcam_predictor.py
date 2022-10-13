@@ -61,7 +61,7 @@ class PCAMPredictor(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, acc, auc = self.forward(batch, mode="train")
-        # wandb.log({"loss": loss, "acc": acc})
+        wandb.log({"acc": acc, "auc": auc, "loss": loss})
         return loss
 
     def validation_step(self, batch, batch_idx):
