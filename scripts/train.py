@@ -206,6 +206,7 @@ if __name__ == "__main__":
         project="pcam",
         entity="pcam",
         config=wandb_config,
+        entity="pcam",
     )
     run_name = wandb.run.name
 
