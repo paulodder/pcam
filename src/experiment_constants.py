@@ -35,6 +35,7 @@ EXPERIMENT_NAME2CONDITIONS = {
 
 def get_config_for_layers(param2val):
     config = EXPERIMENT_NAME2WANDB_CONFIG[LAYERS].copy()
+    config["experiment_name"] = LAYERS
     config["dataset_config"]["mask_types"] = param2val["mask_types"]
     config["optimizer_config"]["lr"] = param2val["lr"]
     return config
