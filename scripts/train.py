@@ -85,9 +85,6 @@ class PCAMPredictor(pl.LightningModule):
         )
         return {
             "optimizer": optimizer,
-            "lr_scheduler": SCHED_STR2INIT_FUNC[
-                self.optimizer_config["scheduler"]
-            ](optimizer),
         }
 
     def training_step(self, batch, batch_idx):
@@ -139,13 +136,14 @@ class PCAMPredictor(pl.LightningModule):
         }
 
     def test_epoch_end(self, outputs):
-        acc = np.mean([tmp["acc"].cpu() for tmp in outputs])
+        acc = np.mean([tmp["acc"] for tmp in outputs])
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
         # print(len(outputs), acc)
         wandb.log({"test_acc": acc, "test_loss": loss})
 
     def forward(self, data, mode="train"):
         x, y = data
+        # print(x.shape)
         # breakpoint()
         outp = self.model(x)
         y_pred_proba = F.softmax(outp)
@@ -165,35 +163,33 @@ if __name__ == "__main__":
     wandb_config = {
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": "pannuke-type",
+            "mask_types": ["otsu_split", "pannuke-type"],
+            "preprocess": None,
+            "binary_mask": True,
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
             "lr": 0.001,
-            "scheduler": "reduce_plat",
         },
         "model_config": {
-            # "model_type": "P4DenseNet",
-            # "n_channels": 13,
-            "model_type": "fA_P4DenseNet",
-            "n_channels": 13,
-            "dropout_p": 0.5,
+            "model_type": "fA_P4MDenseNet",
+            "n_channels": 9,
             "num_blocks": 5,
         },
         "train_on": "train",
-        "validate_on": ["validation", "test"],
+        "validate_on": ["validation"],
         "test_on": "test",
-        "max_epochs": 100,
+        "max_epochs": 75,
         "ngpus": 1,
     }
-
-    NUM_CHANNELS = (
-        3 if wandb_config["dataset_config"]["mask_type"] is None else 4
+    wandb_config["dataset_config"]["mask_types"] = sorted(
+        wandb_config["dataset_config"]["mask_types"]
     )
-    print(f"NUM CHANNELS {NUM_CHANNELS}")
-    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
-
     ds_conf = wandb_config["dataset_config"]
+    NUM_CHANNELS = (
+        3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
+    )
+    wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
 
     # get dataloaders
     split2loader = {
@@ -208,6 +204,7 @@ if __name__ == "__main__":
     wandb_config["model_signature"] = str(model).split("\n")
     wandb.init(
         project="pcam",
+        entity="pcam",
         config=wandb_config,
         entity="pcam",
     )
@@ -220,13 +217,13 @@ if __name__ == "__main__":
         dirpath=config("MODEL_DIR"),
         filename=f"{run_name}" + "-{epoch:02d}-{val_loss:.2f}",
     )
-    lr_monitor = LearningRateMonitor(logging_interval="step")
+    # lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = pl.Trainer(
         gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=wandb_config["max_epochs"],
         num_sanity_val_steps=0,
-        callbacks=[checkpoint_callback, lr_monitor],
+        callbacks=[checkpoint_callback],
     )
     trainer.fit(
         model,

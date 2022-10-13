@@ -21,7 +21,13 @@ NET_STR2INIT_FUNC = {
     "fA_P4MDenseNet": fA_P4MDenseNet,
     "P4MDenseNet": P4MDenseNet,
     "P4DenseNet": P4DenseNet,
-    # "GResNet18": GResNet18,
+}
+
+MODEL_NAME2NUM_CHANNELS = {
+    "fA_P4DenseNet": 13,
+    "fA_P4MDenseNet": 9,
+    "P4MDenseNet": 9,
+    "P4DenseNet": 13,
 }
 
 
@@ -45,10 +51,12 @@ class PCAMPredictor(pl.LightningModule):
         self,
         model_config,
         optimizer_config,
+        run_i=0,
     ):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
+        self.run_i = run_i
 
         model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
 
@@ -93,17 +101,20 @@ class PCAMPredictor(pl.LightningModule):
         if type(outputs[0]) == dict:
             outputs = [outputs]
 
-        for dataloader_name, output in zip(run_config["validate_on"], outputs):
+        for dataloader_name, output in zip(
+            wandb_config["validate_on"], outputs
+        ):
             acc = np.mean([tmp["acc"] for tmp in output])
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
                 {
-                    f"{dataloader_name}_acc": acc,
-                    f"{dataloader_name}_loss": loss,
+                    f"run{self.run_i}_{dataloader_name}_acc": acc,
+                    f"run{self.run_i}_{dataloader_name}_loss": loss,
                 }
             )
             if dataloader_name == "validation":
                 self.log("val_loss", loss)
+                self.val_losses.append(loss)
 
     def test_step(self, batch, batch_idx):
         loss, acc = self.forward(batch, mode="test")
@@ -122,7 +133,6 @@ class PCAMPredictor(pl.LightningModule):
 
     def forward(self, data, mode="train"):
         x, y = data
-        # breakpoint()
         outp = self.model(x)
         y_pred_proba = F.softmax(outp)
         loss = self.loss_module(y_pred_proba, y)
@@ -135,95 +145,132 @@ class PCAMPredictor(pl.LightningModule):
 
 
 def evaluate_model():
-    wandb.init()
-    global run_config
-    run_config = {
+    global wandb_config
+    global mask_comb
+    # Create wandb config
+    wandb_config = {
+        "model_signature": None,  # Set dynamically
         "dataset_config": {
             "batch_size": 64,
-            "mask_type": None if DEBUG else "otsu_split",
-            "preprocess": None if DEBUG else "stain_normalize",
+            # "mask_types": [pannuke-type"],  # Sorted after
+            "mask_types": mask_comb,  # Sorted after
+            "preprocess": "stain_normalize",
             "binary_mask": True,
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
-            "lr": wandb.config.lr,
-            # "scheduler": "reduce_step",
-            # "scheduler_params": {"step_size": 5},
+            "lr": None,  # Set dynamically
         },
         "model_config": {
             "model_type": "P4DenseNet",
-            "n_channels": 9,
+            "n_channels": None,  # Set dynamically
+            "in_channels": None,  # Set dynamically
             "dropout_p": 0.5,
             "num_blocks": 5,
         },
-        "train_on": "train",
+        "train_on": "validation" if DEBUG else "train",
         "validate_on": ["validation"],
         "test_on": "test",
         "max_epochs": 2 if DEBUG else 75,
         "ngpus": 1,
     }
-    ds_conf = run_config["dataset_config"]
-    NUM_CHANNELS = (
-        3
-        + int(ds_conf["mask_type"] is not None)
-        + int(ds_conf["binary_mask"] is True)
+    # Sort mask types
+    wandb_config["dataset_config"]["mask_types"] = sorted(
+        wandb_config["dataset_config"]["mask_types"]
     )
-    run_config["model_config"]["in_channels"] = NUM_CHANNELS
 
-    # get dataloaders
+    # Set number of channels for model
+    wandb_config["model_config"]["n_channels"] = MODEL_NAME2NUM_CHANNELS[
+        wandb_config["model_config"]["model_type"]
+    ]
+
+    # Get number of input channels
+    ds_conf = wandb_config["dataset_config"]
+    NUM_IN_CHANNELS = (
+        3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
+    )
+    wandb_config["model_config"]["in_channels"] = NUM_IN_CHANNELS
+
+    # Get dataloaders
     split2loader = {
         split: get_dataloader(split, **ds_conf)
         for split in ["test", "validation", "train"]
     }
 
-    accs = []
-    losses = []
+    min_val_losses = []
 
-    print(f"Optimizing parameters")
-    model = PCAMPredictor(
-        run_config["model_config"],
-        run_config["optimizer_config"],
-    )
+    for i in range(AVERAGE_OVER):
+        model = PCAMPredictor(
+            wandb_config["model_config"],
+            wandb_config["optimizer_config"],
+            run_i=i,
+        )
 
-    run_config["model_signature"] = str(model).split("\n")
-    run_name = wandb.run.name
+        wandb_config["model_signature"] = str(model).split("\n")
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        mode="min",
-        dirpath=config("MODEL_DIR"),
-        filename=f"{run_name}"
-        + f"-lr={run_config['optimizer_config']['lr']:.3f}"
-        + "-{epoch:02d}-{val_loss:.2f}",
-    )
-    lr_monitor = LearningRateMonitor(logging_interval="step")
+        if i == 0:
+            # Initialize wandb
+            wandb.init(config=wandb_config)
 
-    trainer = pl.Trainer(
-        gpus=run_config["ngpus"] if torch.cuda.is_available() else 0,
-        max_epochs=run_config["max_epochs"],
-        num_sanity_val_steps=1 if DEBUG else 0,
-        callbacks=[checkpoint_callback, lr_monitor],
-    )
-    trainer.fit(
-        model,
-        train_dataloaders=split2loader[run_config.get("train_on")],
-        val_dataloaders=[
-            split2loader[x] for x in run_config.get("validate_on")
-        ],
+            # Set learning rate according to sweep parameters.
+            wandb_config["optimizer_config"]["lr"] = wandb.config.lr
+            model.optimizer_config["lr"] = wandb_config["optimizer_config"][
+                "lr"
+            ]
+            run_name = wandb.run.name
+
+        checkpoint_callback = ModelCheckpoint(
+            monitor="val_loss",
+            mode="min",
+            dirpath=config("MODEL_DIR"),
+            filename=f"{run_name}"
+            + f"-lr={wandb_config['optimizer_config']['lr']:.3f}"
+            + "-{epoch:02d}-{val_loss:.2f}",
+        )
+        lr_monitor = LearningRateMonitor(logging_interval="step")
+
+        trainer = pl.Trainer(
+            gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
+            max_epochs=wandb_config["max_epochs"],
+            num_sanity_val_steps=1 if DEBUG else 0,
+            callbacks=[checkpoint_callback, lr_monitor],
+        )
+        trainer.fit(
+            model,
+            train_dataloaders=split2loader[wandb_config.get("train_on")],
+            val_dataloaders=[
+                split2loader[x] for x in wandb_config.get("validate_on")
+            ],
+        )
+        min_val_losses.append(min(model.val_losses))
+
+    wandb.log(
+        {
+            f"validation_loss_min_avg": np.mean(min_val_losses),
+        }
     )
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    DEBUG = False
+    AVERAGE_OVER = 1 if DEBUG else 3
+    possible_mask_combs = [
+        [],
+        ["pannuke-type"],
+        ["otsu_split"],
+        ["pannuke-type", "otsu_split"],
+    ]
+    mask_comb = possible_mask_combs[1]
+    sweep_name = f"lr_sweep_{'-'.join(mask_comb)}" + (
+        " [DEBUG]" if DEBUG else ""
+    )
     sweep_configuration = {
         "method": "grid",  # options: [bayes, grid, random]
-        "name": "lr_sweep",
-        "metric": {"goal": "minimize", "name": "validation_loss"},
+        "name": sweep_name,
+        "metric": {"goal": "minimize", "name": "validation_loss_min_avg"},
         "parameters": {
             "lr": {
-                "values": [0.0001, 0.001]
-                if DEBUG
-                else [0.0001, 0.001, 0.0025, 0.005]
+                "values": [0.0001] if DEBUG else [0.0001, 0.001, 0.0025, 0.005]
             },
         },
     }
@@ -232,7 +279,8 @@ if __name__ == "__main__":
         sweep=sweep_configuration, project="pcam", entity="pcam"
     )
     # Start sweep job.
-    wandb.agent(sweep_id, function=evaluate_model, count=1 if DEBUG else 3)
+    n_sweeps = len(sweep_configuration["parameters"]["lr"]["values"])
+    wandb.agent(sweep_id, function=evaluate_model, count=n_sweeps)
 
     # evaluate_model()
     # TODO: implement step scheduler and vary steps

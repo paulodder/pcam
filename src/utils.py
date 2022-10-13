@@ -22,3 +22,10 @@ def load(fpath):
         return out
     elif fpath.suffix == ".pt":
         return torch.load(fpath)
+
+
+def get_mask_slug(mask_path):
+    if "otsu_split" in mask_path.name:
+        return "otsu_split"
+    if "pannuke" in mask_path.name:
+        return "pannuke-type"
