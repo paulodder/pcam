@@ -9,6 +9,8 @@ from src.experiment_constants import (
 import pandas as pd
 import wandb
 
+from src.run_config import run_config
+
 
 # data.append(
 #     {
@@ -46,5 +48,4 @@ if __name__ == "__main__":
     exp_manager = ExperimentManager(args.experiment_name)
     necessary_run_configs = exp_manager.get_necessary_runs()
     while necessary_run_configs := exp_manager.get_necessary_runs():
-        # TODO @pim insert your func here
-        print(f"would be running for {necessary_run_configs[0]}")
+        run_config(necessary_run_configs[0])

@@ -17,7 +17,7 @@ from src.resnet import ResNet, ResBlock
 # from src.GCNN import GResNet18, GResnet50, GResNet34
 from src.densenet import fA_P4DenseNet, fA_P4MDenseNet, P4MDenseNet, P4DenseNet
 
-# from src.pcam_predictor import PCAMPredictor
+from src.pcam_predictor import PCAMPredictor
 from pytorch_lightning.callbacks import LearningRateMonitor
 
 NET_STR2INIT_FUNC = {
@@ -26,6 +26,13 @@ NET_STR2INIT_FUNC = {
     "P4MDenseNet": P4MDenseNet,
     "P4DenseNet": P4DenseNet,
     # "GResNet18": GResNet18,
+}
+
+MODEL_NAME2NUM_CHANNELS = {
+    "fA_P4DenseNet": 13,
+    "fA_P4MDenseNet": 9,
+    "P4MDenseNet": 9,
+    "P4DenseNet": 13,
 }
 
 
@@ -75,110 +82,7 @@ TEST_CONFS = [
 ]
 
 
-class PCAMPredictor(pl.LightningModule):
-    def __init__(
-        self,
-        model_config,
-        optimizer_config,
-    ):
-        super().__init__()
-        self.model_config = model_config
-        self.optimizer_config = optimizer_config
-
-        model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
-
-        if "GRes" in model_config["model_type"]:
-            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
-                model_config["in_channels"], model_config["dropout_p"]
-            )
-        else:
-            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
-                model_config["in_channels"],
-                model_config["num_blocks"],
-                model_config["n_channels"],
-            )
-        self.loss_module = nn.BCEWithLogitsLoss()
-        self.val_losses = []
-
-    def configure_optimizers(self):
-        optimizer = optim.AdamW(
-            self.parameters(),
-            lr=self.optimizer_config["lr"],
-            weight_decay=self.optimizer_config["weight_decay"],
-        )
-        return {
-            "optimizer": optimizer,
-        }
-
-    def training_step(self, batch, batch_idx):
-        loss, acc = self.forward(batch, mode="train")
-        wandb.log({"loss": loss, "acc": acc})
-        print(batch.shape)
-        return loss
-        # return {"loss": loss, "training_acc": acc}
-
-    def validation_step(self, batch, batch_idx, dataloader_i):
-        # breakpoint()
-        loss, acc = self.forward(batch, mode="val")
-        return {
-            f"loss": loss,
-            f"acc": acc,
-        }
-
-    # def validation_step(self, batch, batch_idx):
-    #     # breakpoint()
-    #     loss, acc = self.forward(batch, mode="val")
-    #     return {
-    #         f"loss": loss,
-    #         f"acc": acc,
-    #     }
-
-    def validation_epoch_end(self, outputs):
-        if type(outputs[0]) == dict:
-            outputs = [outputs]
-
-        for dataloader_name, output in zip(
-            wandb_config["validate_on"], outputs
-        ):
-            acc = np.mean([tmp["acc"] for tmp in output])
-            loss = np.mean([tmp["loss"].cpu() for tmp in output])
-            wandb.log(
-                {
-                    f"{dataloader_name}_acc": acc,
-                    f"{dataloader_name}_loss": loss,
-                }
-            )
-            if dataloader_name == "validation":
-                self.log("val_loss", loss)
-
-    def test_step(self, batch, batch_idx):
-        loss, acc = self.forward(batch, mode="test")
-
-        return {
-            "loss": loss,
-            "acc": acc,
-        }
-
-    def test_epoch_end(self, outputs):
-        acc = np.mean([tmp["acc"] for tmp in outputs])
-        loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
-        # print(len(outputs), acc)
-        wandb.log({"test_acc": acc, "test_loss": loss})
-
-    def forward(self, data, mode="train"):
-        x, y = data
-        outp = self.model(x)
-        y_pred_proba = F.softmax(outp)
-        loss = self.loss_module(y_pred_proba, y)
-        y_pred_proba = y_pred_proba.cpu().detach().numpy()
-        y = y.cpu().detach().numpy()
-        acc = sum(np.argmax(y_pred_proba, 1) == np.argmax(y, 1)) / len(
-            y_pred_proba
-        )
-        return loss, acc
-
-
-def run_given_config(wandb_config):
+def run_config(wandb_config):
     if "binary_mask" in wandb_config["dataset_config"]["mask_types"]:
         wandb_config["dataset_config"]["binary_mask"] = True
         wandb_config["dataset_config"]["mask_types"] = [
@@ -195,6 +99,10 @@ def run_given_config(wandb_config):
     NUM_CHANNELS = (
         3 + len(ds_conf["mask_types"]) + int(ds_conf["binary_mask"] is True)
     )
+    wandb_config["model_config"]["n_channels"] = MODEL_NAME2NUM_CHANNELS[
+        wandb_config["model_config"]["model_type"]
+    ]
+
     wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
     print(wandb_config)
     # get dataloaders
@@ -243,5 +151,5 @@ def run_given_config(wandb_config):
     print(trainer.callback_metrics)
 
 
-for conf in TEST_CONFS[1:]:
-    run_given_config(conf)
+# for conf in TEST_CONFS[1:]:
+#     run_given_config(conf)
