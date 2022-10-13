@@ -46,6 +46,11 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     exp_manager = ExperimentManager(args.experiment_name)
-    necessary_run_configs = exp_manager.get_necessary_runs()
-    while necessary_run_configs := exp_manager.get_necessary_runs():
+    # necessary_run_configs = exp_manager.get_necessary_runs()
+    while True:
+        necessary_run_configs = exp_manager.get_necessary_runs()
+        if len(necessary_run_configs) == 0:
+            break
+        print("gonna run")
+        print(necessary_run_configs[0])
         run_config(necessary_run_configs[0])

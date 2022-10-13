@@ -1,4 +1,6 @@
-LAYERS = "LAYERS_TESTING"
+from copy import deepcopy
+
+LAYERS = "LAYERS_TESTING2"
 
 PREPROCESS = "PREPROCESS"
 ATTENTION = "ATTENTION"
@@ -8,7 +10,6 @@ EXPERIMENT_NAME2WANDB_CONFIG = {
     LAYERS: {
         "dataset_config": {
             "batch_size": 64,
-            # "mask_types": sorted(["pannuke-type", "otsu_split"]),
             "preprocess": None,
             "binary_mask": True,
         },
@@ -90,16 +91,16 @@ EXPERIMENT_NAME2CONDITIONS = {
 
 
 def get_config_for_layers(param2val):
-    config = EXPERIMENT_NAME2WANDB_CONFIG[LAYERS].copy()
+
+    config = deepcopy(EXPERIMENT_NAME2WANDB_CONFIG[LAYERS])
     config["experiment_name"] = LAYERS
     config["dataset_config"]["mask_types"] = param2val["mask_types"]
     config["param2val"] = param2val
-
     return config
 
 
 def get_config_for_attention(param2val):
-    config = EXPERIMENT_NAME2WANDB_CONFIG[ATTENTION].copy()
+    config = deepcopy(EXPERIMENT_NAME2WANDB_CONFIG[ATTENTION])
     config["experiment_name"] = ATTENTION
     config["model_config"]["model_type"] = param2val["model_type"]
     config["param2val"] = param2val
@@ -108,7 +109,7 @@ def get_config_for_attention(param2val):
 
 
 def get_config_for_preprocess(param2val):
-    config = EXPERIMENT_NAME2WANDB_CONFIG[PREPROCESS].copy()
+    config = deepcopy(EXPERIMENT_NAME2WANDB_CONFIG[PREPROCESS])
     config["experiment_name"] = PREPROCESS
     config["dataset_config"]["preprocess"] = param2val["preprocess"]
     config["param2val"] = param2val
