@@ -118,5 +118,4 @@ class PCAMPredictor(pl.LightningModule):
         y = y.cpu().detach().int()
         auc = self.auroc[mode](y_pred_proba, y)
         acc = self.acc[mode](y_pred_proba, y)
-        breakpoint()
         return loss, acc, auc
