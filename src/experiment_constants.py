@@ -10,8 +10,7 @@ EXPERIMENT_NAME2WANDB_CONFIG = {
     LAYERS: {
         "dataset_config": {
             "batch_size": 64,
-            "preprocess": None,
-            "binary_mask": True,
+            "preprocess": "stain_normalize",
         },
         "optimizer_config": {
             "weight_decay": 0.0001,
