@@ -25,17 +25,18 @@ class PCAMPredictor(pl.LightningModule):
         self.model_config = config["model_config"]
         self.optimizer_config = config["optimizer_config"]
 
-        model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
+        model_func = NET_STR2INIT_FUNC[self.model_config["model_type"]]
 
-        if "GRes" in model_config["model_type"]:
-            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
-                model_config["in_channels"], model_config["dropout_p"]
+        if "GRes" in self.model_config["model_type"]:
+            self.model = NET_STR2INIT_FUNC[self.model_config["model_type"]](
+                self.model_config["in_channels"],
+                self.model_config["dropout_p"],
             )
         else:
             self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
-                model_config["in_channels"],
-                model_config["num_blocks"],
-                model_config["n_channels"],
+                self.model_config["in_channels"],
+                self.model_config["num_blocks"],
+                self.model_config["n_channels"],
             )
         self.loss_module = nn.BCEWithLogitsLoss()
         self.val_losses = []
