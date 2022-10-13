@@ -75,11 +75,11 @@ EXPERIMENT_NAME2WANDB_CONFIG = {
 EXPERIMENT_NAME2REPEATS = {LAYERS: 3, PREPROCESS: 3, ATTENTION: 3}
 EXPERIMENT_NAME2CONDITIONS = {
     LAYERS: [
-        {"mask_types": ["binary_mask"]},
-        {"mask_types": []},
-        {"mask_types": ["binary_mask", "otsu_split"]},
-        {"mask_types": ["binary_mask", "pannuke-type"]},
-        {"mask_types": ["binary_mask", "pannuke-type", "otsu_split"]},
+        {"mask_types": sorted(["binary_mask"])},
+        {"mask_types": sorted([])},
+        {"mask_types": sorted(["binary_mask", "otsu_split"])},
+        {"mask_types": sorted(["binary_mask", "pannuke-type"])},
+        {"mask_types": sorted(["binary_mask", "pannuke-type", "otsu_split"])},
     ],
     PREPROCESS: [{"preprocess": "stain_normalize"}, {"preprocess": None}],
     ATTENTION: [
@@ -93,6 +93,8 @@ def get_config_for_layers(param2val):
     config = EXPERIMENT_NAME2WANDB_CONFIG[LAYERS].copy()
     config["experiment_name"] = LAYERS
     config["dataset_config"]["mask_types"] = param2val["mask_types"]
+    config["param2val"] = param2val
+
     return config
 
 
@@ -100,6 +102,8 @@ def get_config_for_attention(param2val):
     config = EXPERIMENT_NAME2WANDB_CONFIG[ATTENTION].copy()
     config["experiment_name"] = ATTENTION
     config["model_config"]["model_type"] = param2val["model_type"]
+    config["param2val"] = param2val
+
     return config
 
 
@@ -107,6 +111,7 @@ def get_config_for_preprocess(param2val):
     config = EXPERIMENT_NAME2WANDB_CONFIG[PREPROCESS].copy()
     config["experiment_name"] = PREPROCESS
     config["dataset_config"]["preprocess"] = param2val["preprocess"]
+    config["param2val"] = param2val
     return config
 
 

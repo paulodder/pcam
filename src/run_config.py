@@ -36,52 +36,6 @@ MODEL_NAME2NUM_CHANNELS = {
 }
 
 
-TEST_CONFS = [
-    {
-        "dataset_config": {
-            "batch_size": 64,
-            "preprocess": None,
-            "binary_mask": True,
-            "mask_types": ["binary_mask", "otsu_split"],
-        },
-        "optimizer_config": {"weight_decay": 0.0001, "lr": 0.01},
-        "model_config": {
-            "model_type": "P4MDenseNet",
-            "n_channels": 13,
-            "dropout_p": 0.5,
-            "num_blocks": 5,
-        },
-        "train_on": "train",
-        "validate_on": ["validation"],
-        "test_on": "test",
-        "max_epochs": 75,
-        "ngpus": 1,
-        "experiment_name": "TEST",
-    },
-    {
-        "dataset_config": {
-            "batch_size": 64,
-            "preprocess": None,
-            "binary_mask": True,
-            "mask_types": ["binary_mask"],
-        },
-        "optimizer_config": {"weight_decay": 0.0001, "lr": 0.01},
-        "model_config": {
-            "model_type": "P4MDenseNet",
-            "n_channels": 13,
-            "dropout_p": 0.5,
-            "num_blocks": 5,
-        },
-        "train_on": "train",
-        "validate_on": ["validation"],
-        "test_on": "test",
-        "max_epochs": 75,
-        "ngpus": 1,
-        "experiment_name": "TEST",
-    },
-]
-
-
 def run_config(wandb_config):
     if "binary_mask" in wandb_config["dataset_config"]["mask_types"]:
         wandb_config["dataset_config"]["binary_mask"] = True
@@ -104,17 +58,14 @@ def run_config(wandb_config):
     ]
 
     wandb_config["model_config"]["in_channels"] = NUM_CHANNELS
-    print(wandb_config)
+    # print(wandb_config)
     # get dataloaders
     split2loader = {
         split: get_dataloader(split, **ds_conf)
         for split in ["test", "validation", "train"]
     }
 
-    model = PCAMPredictor(
-        wandb_config.get("model_config"),
-        wandb_config["optimizer_config"],
-    )
+    model = PCAMPredictor(wandb_config)
     wandb_config["model_signature"] = str(model).split("\n")
     wandb.init(
         project="pcam",
@@ -122,7 +73,8 @@ def run_config(wandb_config):
         config=wandb_config,
     )
     run_name = wandb.run.name
-    print(wandb_config)
+    print("Running", wandb_config)
+    print("Run name ", run_name)
     checkpoint_callback = ModelCheckpoint(
         save_top_k=10,
         monitor="val_loss",
