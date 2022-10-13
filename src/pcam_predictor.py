@@ -33,7 +33,7 @@ class PCAMPredictor(pl.LightningModule):
                 self.model_config["dropout_p"],
             )
         else:
-            self.model = NET_STR2INIT_FUNC[model_config["model_type"]](
+            self.model = NET_STR2INIT_FUNC[self.model_config["model_type"]](
                 self.model_config["in_channels"],
                 self.model_config["num_blocks"],
                 self.model_config["n_channels"],
@@ -118,4 +118,5 @@ class PCAMPredictor(pl.LightningModule):
         y = y.cpu().detach().int()
         auc = self.auroc[mode](y_pred_proba, y)
         acc = self.acc[mode](y_pred_proba, y)
+        breakpoint()
         return loss, acc, auc
