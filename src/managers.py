@@ -28,7 +28,7 @@ class ExperimentManager:
             data.append(
                 {
                     "experiment_name": wconfig.get("experiment_name"),
-                    "mask_types": sorted(wconfig.get("mask_types")),
+                    "mask_types": tuple(sorted(wconfig.get("mask_types"))),
                 }
             )
         regdf = pd.DataFrame(data, columns=["experiment_name", "mask_types"])
@@ -47,9 +47,10 @@ class ExperimentManager:
         for cond in EXPERIMENT_NAME2CONDITIONS[self.experiment_name]:
             data.append(
                 {
+                    **cond,
                     "param2val": cond,
                     "nof_repeats": nof_repeats,
-                    **cond,
+                    "mask_types": tuple(cond.get("mask_types")),
                 }
             )
         registry_df = pd.DataFrame(data)
