@@ -52,7 +52,7 @@ EXPERIMENT_NAME2WANDB_CONFIG = {
     ATTENTION: {
         "dataset_config": {
             "batch_size": 64,
-            "mask_types": ["otsu_split", "pannuke-type"],
+            "mask_types": ["otsu_split", "pannuke-type", "binary_mask"],
             "preprocess": "stain_normalize",
             "binary_mask": True,
         },
