@@ -97,11 +97,35 @@ def run_config(wandb_config):
             split2loader[x] for x in wandb_config.get("validate_on")
         ],
     )
-    test_result = trainer.test(
-        model, split2loader[wandb_config.get("test_on")], verbose=False
+    on_result = trainer.test(
+        dataloaders=split2loader[wandb_config.get("test_on")],
+        ckpt_path="best",
+        verbose=True,
     )
     print(trainer.callback_metrics)
 
 
-# for conf in TEST_CONFS[1:]:
-#     run_given_config(conf)
+# run_config(
+#     {
+#         "dataset_config": {
+#             "batch_size": 64,
+#             "preprocess": None,
+#             "binary_mask": True,
+#             "mask_types": [],
+#         },
+#         "optimizer_config": {
+#             "weight_decay": 0.0001,
+#             "lr": 0.001,
+#         },
+#         "model_config": {
+#             "model_type": "P4DenseNet",
+#             "dropout_p": 0.5,
+#             "num_blocks": 5,
+#         },
+#         "train_on": "test",
+#         "validate_on": ["validation"],
+#         "test_on": "test",
+#         "max_epochs": 2,
+#         "ngpus": 1,
+#     }
+# )
