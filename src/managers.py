@@ -91,10 +91,10 @@ class ExperimentManager:
             if row.runs_to_do > 0:
 
                 conf = get_config(self.experiment_name, row.needed_param2val)
-                assert (
-                    conf["dataset_config"]["mask_types"]
-                    == row.needed_param2val["mask_types"]
-                )
+                # assert (
+                #     conf["dataset_config"]["mask_types"]
+                #     == row.needed_param2val["mask_types"]
+                # )
                 # breakpoint()
                 print(f"{row.runs_to_do} repeats to do of {conf}")
                 necessary_runs.append(
