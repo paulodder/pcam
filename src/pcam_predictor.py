@@ -23,12 +23,10 @@ class PCAMPredictor(pl.LightningModule):
         self,
         model_config,
         optimizer_config,
-        run_i=0,
     ):
         super().__init__()
         self.model_config = model_config
         self.optimizer_config = optimizer_config
-        self.run_i = run_i
 
         model_func = NET_STR2INIT_FUNC[model_config["model_type"]]
 
@@ -88,9 +86,9 @@ class PCAMPredictor(pl.LightningModule):
             loss = np.mean([tmp["loss"].cpu() for tmp in output])
             wandb.log(
                 {
-                    f"run{self.run_i}_{dataloader_name}_acc": acc,
-                    f"run{self.run_i}_{dataloader_name}_auc": acc,
-                    f"run{self.run_i}_{dataloader_name}_loss": loss,
+                    f"{dataloader_name}_acc": acc,
+                    f"{dataloader_name}_auc": acc,
+                    f"{dataloader_name}_loss": loss,
                 }
             )
             if dataloader_name == "validation":
