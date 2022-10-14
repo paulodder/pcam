@@ -48,7 +48,9 @@ if __name__ == "__main__":
     exp_manager = ExperimentManager(args.experiment_name)
     # necessary_run_configs = exp_manager.get_necessary_runs()
     while True:
-        necessary_run_configs = exp_manager.get_necessary_runs()
+        import random
+        necessary_run_configs = (exp_manager.get_necessary_runs())
+        random.shuffle(necessary_run_configs)
         if len(necessary_run_configs) == 0:
             break
         print("gonna run")
