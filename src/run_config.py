@@ -67,10 +67,8 @@ def run_config(wandb_config):
 
     model = PCAMPredictor(wandb_config)
     wandb_config["model_signature"] = str(model).split("\n")
-    wandb.init(
-        project="pcam",
-        entity="pcam",
-        config=wandb_config,
+    run = wandb.init(
+        project="pcam", entity="pcam", config=wandb_config, reinit=True
     )
     run_name = wandb.run.name
     print("Running", wandb_config)
@@ -103,6 +101,7 @@ def run_config(wandb_config):
         verbose=True,
     )
     print(trainer.callback_metrics)
+    run.finish()
 
 
 # run_config(
