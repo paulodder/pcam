@@ -85,7 +85,7 @@ def run_config(wandb_config):
     trainer = pl.Trainer(
         gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=wandb_config["max_epochs"],
-        num_sanity_val_steps=0,
+        num_sanity_val_steps=1,
         callbacks=[checkpoint_callback],
     )
     trainer.fit(
@@ -102,6 +102,33 @@ def run_config(wandb_config):
     )
     print(trainer.callback_metrics)
     run.finish()
+
+
+if __name__ == "__main__":
+    wandb_config = {
+        "dataset_config": {
+            "batch_size": 64,
+            "preprocess": "stain_normalize",
+            "mask_types": ["otsu_split", "pannuke-type", "binary_mask"],
+            "binary_mask": True,
+        },
+        "optimizer_config": {
+            "weight_decay": 0.0001,
+            "lr": 0.001,
+        },
+        "model_config": {
+            "model_type": "P4DenseNet",
+            "dropout_p": 0.5,
+            "num_blocks": 5,
+        },
+        "train_on": "train",
+        "validate_on": ["validation"],
+        "test_on": "test",
+        "max_epochs": 75,
+        "ngpus": 1,
+    }
+
+    run_config(wandb_config)
 
 
 # run_config(

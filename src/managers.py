@@ -86,6 +86,7 @@ class ExperimentManager:
         regdf["run_nof_runs"] = regdf["run_nof_runs"].fillna(0)
         regdf["runs_to_do"] = regdf["needed_nof_runs"] - regdf["run_nof_runs"]
         necessary_runs = []
+        # print(regdf.runs_to_do)
         for _, row in regdf.iterrows():
             if row.runs_to_do > 0:
 
@@ -109,18 +110,19 @@ if __name__ == "__main__":
     for experiment in EXPERIMENT_NAME2REPEATS:
         print("Experiment", experiment)
         manager = ExperimentManager(experiment)
-        regdf_run = manager.register_experiments_run()
-        manager.add_str_param2val_col(regdf_run)
-        regdf_needed = manager.register_experiments_needed()
-        manager.add_str_param2val_col(regdf_needed)
-        # breakpoint()
-        regdf = regdf_needed.merge(
-            regdf_run,
-            left_on=["needed_param2val_str"],
-            right_on=["run_param2val_str"],
-            how="left",
-        )
-        regdf["run_nof_runs"] = regdf["run_nof_runs"].fillna(0)
-        regdf["runs_to_do"] = regdf["needed_nof_runs"] - regdf["run_nof_runs"]
+        manager.get_necessary_runs()
+        # regdf_run = manager.register_experiments_run()
+        # manager.add_str_param2val_col(regdf_run)
+        # regdf_needed = manager.register_experiments_needed()
+        # manager.add_str_param2val_col(regdf_needed)
+        # # breakpoint()
+        # regdf = regdf_needed.merge(
+        #     regdf_run,
+        #     left_on=["needed_param2val_str"],
+        #     right_on=["run_param2val_str"],
+        #     how="left",
+        # )
+        # regdf["run_nof_runs"] = regdf["run_nof_runs"].fillna(0)
+        # regdf["runs_to_do"] = regdf["needed_nof_runs"] - regdf["run_nof_runs"]
 
-        print(regdf)
+        # print(regdf)
