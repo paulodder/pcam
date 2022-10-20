@@ -3,9 +3,12 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 import pytorch_lightning as pl
+import pickle as pkl
 from torchmetrics import AUROC, Accuracy
 from torch.nn import functional as F
 import numpy as np
+from decouple import config
+from pathlib import Path
 
 from src.densenet import fA_P4DenseNet, fA_P4MDenseNet, P4MDenseNet, P4DenseNet
 
@@ -109,6 +112,10 @@ class PCAMPredictor(pl.LightningModule):
         acc = np.mean([tmp["acc"] for tmp in outputs])
         preds = torch.cat([tmp["preds"] for tmp in outputs], 0)
         targets = torch.cat([tmp["targets"] for tmp in outputs], 0)
+        with open(Path(config("MODEL_DIR")) / "test_preds.pkl", "wb") as f:
+            pkl.dump(preds, f)
+        with open(Path(config("MODEL_DIR")) / "test_targets.pkl", "wb") as f:
+            pkl.dump(targets, f)
         auc = self.auroc["test"](preds, targets)
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
         wandb.log({"test_acc": acc, "test_auc": auc, "test_loss": loss})

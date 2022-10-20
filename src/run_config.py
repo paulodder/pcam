@@ -85,7 +85,7 @@ def run_config(wandb_config):
     trainer = pl.Trainer(
         gpus=wandb_config["ngpus"] if torch.cuda.is_available() else 0,
         max_epochs=wandb_config["max_epochs"],
-        num_sanity_val_steps=1,
+        num_sanity_val_steps=0,
         callbacks=[checkpoint_callback],
     )
     trainer.fit(

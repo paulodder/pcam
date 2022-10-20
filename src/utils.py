@@ -29,3 +29,13 @@ def get_mask_slug(mask_path):
         return "otsu_split"
     if "pannuke" in mask_path.name:
         return "pannuke-type"
+
+
+def get_pickle(fpath):
+    with open(fpath, "rb") as f:
+        return pickle.load(f)
+
+
+def save_as_pickle(obj, fpath):
+    with open(fpath, "wb") as f:
+        pkl.dump(obj, f)
