@@ -112,9 +112,15 @@ class PCAMPredictor(pl.LightningModule):
         acc = np.mean([tmp["acc"] for tmp in outputs])
         preds = torch.cat([tmp["preds"] for tmp in outputs], 0)
         targets = torch.cat([tmp["targets"] for tmp in outputs], 0)
-        with open(Path(config("MODEL_DIR")) / "test_preds.pkl", "wb") as f:
+        with open(
+            Path(config("MODEL_DIR")) / f"{wandb.run.name}_test-preds.pkl",
+            "wb",
+        ) as f:
             pkl.dump(preds, f)
-        with open(Path(config("MODEL_DIR")) / "test_targets.pkl", "wb") as f:
+        with open(
+            Path(config("MODEL_DIR")) / f"{wandb.run.name}_test-targets.pkl",
+            "wb",
+        ) as f:
             pkl.dump(targets, f)
         auc = self.auroc["test"](preds, targets)
         loss = np.mean([tmp["loss"].cpu() for tmp in outputs])
