@@ -15,6 +15,7 @@ from decouple import config
 config("PROJECT_DIR")
 #+END_SRC
 
+This study investigates the performance of data preprocessing and enhancement methods in the context of deep learning on detecting cancerous cells in histopathologic scans of lymph node sections. Recent developments have given rise to deep learning models that already outperform a panel of trained pathologists in identifying cancerous cells in whole slide images. In an attempt to improve on these methods, we evaluate the effect of several different data enhancements on the performance of state-of-the-art rotation equivariant convolutional neural networks used for classification of slides from whole slide images. In particular, we investigate the effect of luminosity standardization, stain normalization, and concatenation of various nuclei segmentation masks on different networks. While stain normalization markedly increased model performance, the effects of one or more segmentation masks had a negligible, albeit positive, effect on the performance. In addition, we observe that the attentive network failed to outperform its non-attentive variant, in spite of a significantly greater number of parameters.
 
 * virtualenv
 Initialize a virtualenv in python3.8
